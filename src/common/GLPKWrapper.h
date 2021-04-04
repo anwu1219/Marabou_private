@@ -108,10 +108,25 @@ public:
 
 private:
     glp_prob *_lp;
+    glp_smcp *_controlParameters;
     int _retValue;
+    unsigned _numRows;
+    unsigned _numCols;
+
+    Map<String, unsigned> _nameToVariable;
 
     void freeModelIfNeeded();
     void freeMemoryIfNeeded();
+
+    void addConstraint( const List<LPSolver::Term> &terms, double lb, double ub,
+                        int sense );
+
+    static unsigned getVariable( String name )
+    {
+        auto subTokens = name.tokenize( "x" );
+        unsigned justIndex = atoi( subTokens.rbegin()->ascii() );
+        return justIndex;
+    }
 
     static void log( const String &message );
 };

@@ -27,17 +27,24 @@
 using namespace std;
 
 GLPKWrapper::GLPKWrapper()
+    : _retValue( -1 )
+    , _numRows( 0 )
+    , _numCols( 0 )
 {
     _lp = glp_create_prob();
+    _controlParameters = new glp_smcp();
     glp_set_prob_name( _lp, "prob" );
 }
 
 GLPKWrapper::~GLPKWrapper()
 {
+    freeModelIfNeeded();
 }
 
 void GLPKWrapper::freeModelIfNeeded()
 {
+    glp_delete_prob( _lp );
+    delete _controlParameters;
 }
 
 void GLPKWrapper::freeMemoryIfNeeded()
@@ -47,52 +54,109 @@ void GLPKWrapper::freeMemoryIfNeeded()
 
 void GLPKWrapper::resetModel()
 {
+    freeMemoryIfNeeded();
+    _lp = glp_create_prob();
+    glp_set_prob_name( _lp, "prob" );
 }
 
-void GLPKWrapper::setVerbosity( unsigned )
+void GLPKWrapper::setVerbosity( unsigned verbosity )
 {
+    _controlParameters->msg_lev = verbosity;
 }
 
 void GLPKWrapper::reset()
 {
+    resetModel();
 }
 
-void GLPKWrapper::addVariable( String, double, double, VariableType )
+void GLPKWrapper::addVariable( String name, double lb, double ub, VariableType )
 {
+    ASSERT( !_nameToVariable.exists( name ) );
+    ++_numCols;
+    _nameToVariable[name] = _numCols;
+    glp_add_cols( _lp,_numCols );
+    glp_set_col_name( _lp, _numCols, name.ascii() );
+    glp_set_col_bnds( _lp, _numCols, GLP_DB, lb, ub );
 }
 
-void GLPKWrapper::setLowerBound( String, double )
+void GLPKWrapper::setLowerBound( String name, double lb )
 {
+    glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB,
+                      lb, getUpperBound( getVariable( name ) ) );
 }
 
-void GLPKWrapper::setUpperBound( String, double )
+void GLPKWrapper::setUpperBound( String name, double ub )
 {
+    glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB,
+                      getLowerBound( getVariable( name ) ), ub );
 }
 
-double GLPKWrapper::getLowerBound( unsigned )
+double GLPKWrapper::getLowerBound( unsigned var )
 {
-    return 0;
+    return glp_get_col_lb( _lp, _nameToVariable[Stringf("x%u", var ).ascii()] );
 }
 
-double GLPKWrapper::getUpperBound( unsigned )
+double GLPKWrapper::getUpperBound( unsigned var )
 {
-    return 0;
+    return glp_get_col_ub( _lp, _nameToVariable[Stringf("x%u", var ).ascii()] );
 }
 
-void GLPKWrapper::setCutoff( double )
+void GLPKWrapper::setCutoff( double cutoff )
 {
+    int dir = glp_get_obj_dir( _lp );
+    if ( dir == GLP_MAX )
+        _controlParameters->obj_ll = cutoff;
+    else
+        _controlParameters->obj_ul = cutoff;
+
 }
 
-void GLPKWrapper::addLeqConstraint( const List<Term> &, double , String )
+void GLPKWrapper::addLeqConstraint( const List<Term> & terms, double scalar, String )
 {
+    ++_numRows;
+    glp_add_rows( _lp, _numRows );
+    glp_set_row_name( _lp, _numRows, Stringf( "c%u", _numRows ).ascii() );
+    addConstraint( terms, 0, scalar, GLP_UP );
 }
 
-void GLPKWrapper::addGeqConstraint( const List<Term> &, double, String )
+void GLPKWrapper::addGeqConstraint( const List<Term> &terms, double scalar, String )
 {
+    ++_numRows;
+    glp_add_rows( _lp, _numRows );
+    glp_set_row_name( _lp, _numRows, Stringf( "c%u", _numRows ).ascii() );
+    addConstraint( terms, scalar, 0, GLP_LO );
 }
 
-void GLPKWrapper::addEqConstraint( const List<Term> &, double, String )
+void GLPKWrapper::addEqConstraint( const List<Term> &terms, double scalar, String )
 {
+    ++_numRows;
+    glp_add_rows( _lp, _numRows );
+    glp_set_row_name( _lp, _numRows, Stringf( "c%u", _numRows ).ascii() );
+    addConstraint( terms, scalar, scalar, GLP_FX );
+}
+
+void GLPKWrapper::addConstraint( const List<Term> &terms, double lb, double ub,
+                                   int sense )
+{
+    glp_set_row_bnds( _lp, _numRows, sense, lb, ub );
+    int size = terms.size();
+    int *indices = new int[size + 1];
+    double *weights = new double[size + 1];
+
+    unsigned counter = 1;
+    for ( const auto &term : terms )
+    {
+        unsigned col = _nameToVariable[term._variable];
+        unsigned coeff = term._coefficient;
+        indices[counter] = col;
+        weights[counter] = coeff;
+        ++counter;
+    }
+
+    glp_set_mat_row( _lp, _numRows, size, indices, weights );
+
+    delete indices;
+    delete weights;
 }
 
 void GLPKWrapper::removeConstraint( String /*constraintName*/ )
@@ -144,19 +208,17 @@ bool GLPKWrapper::haveFeasibleSolution()
 void GLPKWrapper::solve()
 {
     // The GLPK control parameters
-    glp_smcp controlParameters;
+    glp_init_smcp( _controlParameters );
+    _controlParameters->msg_lev = GLP_MSG_OFF;
+    _controlParameters->meth = GLP_PRIMAL;
+    _controlParameters->pricing = GLP_PT_PSE; // Steepest Edge
+    _controlParameters->r_test = GLP_RT_HAR; // Harris' two-pass
+    _controlParameters->presolve = 1;
 
-    glp_init_smcp( &controlParameters );
-    controlParameters.msg_lev = GLP_MSG_OFF;
-    controlParameters.meth = GLP_PRIMAL;
-    controlParameters.pricing = GLP_PT_PSE; // Steepest Edge
-    controlParameters.r_test = GLP_RT_HAR; // Harris' two-pass
-    controlParameters.presolve = 1;
-
-    _retValue = glp_simplex( _lp, &controlParameters );
+    _retValue = glp_simplex( _lp, _controlParameters );
 }
 
-double getValue( unsigned )
+double GLPKWrapper::getValue( unsigned )
 {
     return 0;
 }
@@ -191,6 +253,10 @@ unsigned GLPKWrapper::getNumberOfNodes()
 {
     // GLPK doesn't support this.
     return 0;
+}
+
+void GLPKWrapper::updateModel()
+{
 }
 
 void GLPKWrapper::log( const String &message )
