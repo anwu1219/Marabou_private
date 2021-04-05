@@ -59,7 +59,7 @@ def main():
                         marabou_arg.append(arg)
                         takeNext = True
         print(marabou_arg)
-        subprocess.run([os.path.join(args.work_dir, "build_production/Marabou")] + ["--input-query={}".format(name)] + marabou_arg )
+        subprocess.run([os.path.join(args.work_dir, "build/Marabou")] + ["--input-query={}".format(name)] + marabou_arg )
         os.remove(name)
 
 def createQuery(args):
