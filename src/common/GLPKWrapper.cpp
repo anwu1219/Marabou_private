@@ -26,14 +26,11 @@
 
 using namespace std;
 
-GLPKWrapper::GLPKWrapper()
-    : _lp( NULL )
-    , _controlParameters( NULL )
-    , _retValue( -1 )
-    , _numRows( 0 )
-    , _numCols( 0 )
+void boundCalculationHook( int n, int m, int *head, int leavingBasic,
+                           int enteringNonBasic, double *basicRow )
 {
-    resetModel();
+    activeGlpk->tighteningBoundsOnRow( n, m, head, leavingBasic, enteringNonBasic,
+                                       basicRow );
 }
 
 GLPKWrapper::~GLPKWrapper()
@@ -75,11 +72,12 @@ void GLPKWrapper::resetModel()
         GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS;
     _controlParameters->tol_dj =
     GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS;
-
+    _controlParameters->boundCalculationHook = &boundCalculationHook;
 
     _retValue = -1;
     _numRows = 0;
     _numCols = 0;
+    _firstCall = true;
 }
 
 void GLPKWrapper::setVerbosity( unsigned verbosity )
@@ -247,8 +245,10 @@ bool GLPKWrapper::cutoffOccurred()
 // Returns true iff the instance is infeasible
 bool GLPKWrapper::infeasible()
 {
-    return _retValue == GLP_EBOUND ||
-        _retValue == GLP_ENOPFS ||  glp_get_prim_stat( _lp ) == GLP_NOFEAS;
+    return _retValue != -1 &&
+        ( _retValue == GLP_EBOUND ||
+          _retValue == GLP_ENOPFS ||
+          glp_get_prim_stat( _lp ) == GLP_NOFEAS );
 }
 
 // Returns true iff the instance timed out
@@ -265,6 +265,14 @@ bool GLPKWrapper::haveFeasibleSolution()
 
 void GLPKWrapper::solve()
 {
+    if ( _firstCall )
+    {
+        _controlParameters->presolve = 1;
+        _firstCall = false;
+    }
+    else
+        _controlParameters->presolve = 0;
+
     log( Stringf( "Number of rows: %u", glp_get_num_rows( _lp ) ) );
     log( Stringf( "Number of columns: %u", glp_get_num_cols( _lp ) ) );
     _retValue = glp_simplex( _lp, _controlParameters );
@@ -324,6 +332,15 @@ unsigned GLPKWrapper::getNumberOfNodes()
 
 void GLPKWrapper::updateModel()
 {
+}
+
+void GLPKWrapper::tighteningBoundsOnRow( int n, int m, int *head, int leavingBasic,
+                                         int enteringNonBasic, double *basicRow )
+{
+    std::cout << n << " " << m << " " << head << " " << leavingBasic << " " <<
+        enteringNonBasic << " " << basicRow << std::endl;
+    //for ( int i = 0; i < n; ++i )
+    //    std::cout << basicRow[i] << "*"  << head[i] << std::endl;
 }
 
 void GLPKWrapper::log( const String &message )

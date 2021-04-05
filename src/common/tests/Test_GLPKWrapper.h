@@ -39,7 +39,7 @@ public:
     void test_optimize()
     {
 #ifdef ENABLE_GLPK
-        GLPKWrapper glpk;
+        GLPKWrapper glpk( NULL );
 
         glpk.addVariable( "x", 0, 3 );
         glpk.addVariable( "y", 0, 3 );
@@ -85,7 +85,7 @@ public:
     void test_incremental()
     {
 #ifdef ENABLE_GLPK
-        GLPKWrapper glpk;
+        GLPKWrapper glpk( NULL );
 
         glpk.addVariable( "x", 2, 4 );
         glpk.addVariable( "y", 3, 5 );

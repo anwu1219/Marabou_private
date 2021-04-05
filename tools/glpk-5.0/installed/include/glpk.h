@@ -103,6 +103,8 @@ typedef struct
       double foo_bar[38];     /* (reserved) */
 } glp_bfcp;
 
+typedef void (* BoundCalculationHook)( int n, int m, int *head, int leavingBasic, int enteringNonBasic, double *basicRow );
+
 typedef struct
 {     /* simplex solver control parameters */
       int msg_lev;            /* message level: */
@@ -134,6 +136,8 @@ typedef struct
       int out_frq;            /* display output frequency, ms */
       int out_dly;            /* display output delay, ms */
       int presolve;           /* enable/disable using LP presolver */
+
+      BoundCalculationHook boundCalculationHook;
 #if 1 /* 11/VII-2017 (not documented yet) */
       int excl;               /* exclude fixed non-basic variables */
       int shift;              /* shift bounds of variables to zero */

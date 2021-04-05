@@ -16,16 +16,35 @@
 #ifndef __GLPKWrapper_h__
 #define __GLPKWrapper_h__
 
+#include "BoundManager.h"
 #include "LPSolver.h"
 #include "MStringf.h"
 #include "Map.h"
 
 #include "glpk.h"
 
+extern void boundCalculationHook( int n, int m, int *head, int leavingBasic,
+                                  int enteringNonBasic, double *basicRow );
+
+class GLPKWrapper;
+static GLPKWrapper *activeGlpk;
+
 class GLPKWrapper : public LPSolver
 {
 public:
-    GLPKWrapper();
+    GLPKWrapper( BoundManager *boundManager )
+        : _lp( NULL )
+        , _controlParameters( NULL )
+        , _retValue( -1 )
+        , _numRows( 0 )
+        , _numCols( 0 )
+        , _boundManager( boundManager )
+        , _firstCall ( false )
+    {
+        activeGlpk = this;
+        resetModel();
+    }
+
     ~GLPKWrapper();
 
     // Add a new variabel to the model
@@ -106,12 +125,17 @@ public:
 
     void updateModel();
 
+    void tighteningBoundsOnRow( int n, int m, int *head, int leavingBasic,
+                                int enteringNonBasic, double *basicRow );
+
 private:
     glp_prob *_lp;
     glp_smcp *_controlParameters;
     int _retValue;
     unsigned _numRows;
     unsigned _numCols;
+    BoundManager *_boundManager;
+    bool _firstCall;
 
     Map<String, unsigned> _nameToVariable;
 

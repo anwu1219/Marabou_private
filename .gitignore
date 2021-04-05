@@ -15,6 +15,7 @@ TAGS
 *.so
 *.pyc
 /src/engine/marabou.elf
+/tools/glpk-5.0/installed
 tools/boost_1_68_0
 /tools/boost.unzipped
 /tools/boost_1_68_0.tar.gz

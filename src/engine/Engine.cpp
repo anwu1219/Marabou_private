@@ -212,7 +212,7 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
     if ( _useGurobi )
         _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
     else
-        _gurobi = std::unique_ptr<GLPKWrapper>( new GLPKWrapper() );
+        _gurobi = std::unique_ptr<GLPKWrapper>( new GLPKWrapper( &_boundManager ) );
 
     _milpEncoder = std::unique_ptr<MILPEncoder>( new MILPEncoder( _boundManager, true ) );
     _milpEncoder->encodeInputQuery( *_gurobi, _preprocessedQuery );
