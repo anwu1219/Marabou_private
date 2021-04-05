@@ -90,6 +90,7 @@ void GLPKWrapper::reset()
 void GLPKWrapper::addVariable( String name, double lb, double ub, VariableType )
 {
     ASSERT( !_nameToVariable.exists( name ) );
+    _retValue = -1;
     ++_numCols;
     int col = glp_add_cols( _lp, 1 );
     _nameToVariable[name] = col;
@@ -99,12 +100,14 @@ void GLPKWrapper::addVariable( String name, double lb, double ub, VariableType )
 
 void GLPKWrapper::setLowerBound( String name, double lb )
 {
+    _retValue = -1;
     glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB,
                       lb, glp_get_col_ub( _lp, _nameToVariable[name] ) );
 }
 
 void GLPKWrapper::setUpperBound( String name, double ub )
 {
+    _retValue = -1;
     glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB,
                       glp_get_col_lb( _lp, _nameToVariable[name] ), ub );
 }
@@ -121,6 +124,7 @@ double GLPKWrapper::getUpperBound( unsigned var )
 
 void GLPKWrapper::setCutoff( double cutoff )
 {
+    _retValue = -1;
     int dir = glp_get_obj_dir( _lp );
     if ( dir == GLP_MAX )
         _controlParameters->obj_ll = cutoff;
@@ -130,6 +134,7 @@ void GLPKWrapper::setCutoff( double cutoff )
 
 void GLPKWrapper::addLeqConstraint( const List<Term> & terms, double scalar, String )
 {
+    _retValue = -1;
     ++_numRows;
     int row = glp_add_rows( _lp, 1 );
     glp_set_row_name( _lp, row, Stringf( "c%u", row ).ascii() );
@@ -138,6 +143,7 @@ void GLPKWrapper::addLeqConstraint( const List<Term> & terms, double scalar, Str
 
 void GLPKWrapper::addGeqConstraint( const List<Term> &terms, double scalar, String )
 {
+    _retValue = -1;
     ++_numRows;
     int row = glp_add_rows( _lp, 1 );
     glp_set_row_name( _lp, row, Stringf( "c%u", row ).ascii() );
@@ -146,6 +152,7 @@ void GLPKWrapper::addGeqConstraint( const List<Term> &terms, double scalar, Stri
 
 void GLPKWrapper::addEqConstraint( const List<Term> &terms, double scalar, String )
 {
+    _retValue = -1;
     ++_numRows;
     int row = glp_add_rows( _lp, 1 );
     glp_set_row_name( _lp, row, Stringf( "c%u", row ).ascii() );
@@ -182,6 +189,7 @@ void GLPKWrapper::removeConstraint( String /*constraintName*/ )
 
 void GLPKWrapper::setCost( const List<Term> &terms )
 {
+    _retValue = -1;
     glp_set_obj_dir( _lp, GLP_MIN );
     for ( const auto &term : terms )
     {
@@ -193,6 +201,7 @@ void GLPKWrapper::setCost( const List<Term> &terms )
 
 void GLPKWrapper::setObjective( const List<Term> &terms )
 {
+    _retValue = -1;
     glp_set_obj_dir( _lp, GLP_MAX );
     for ( const auto &term : terms )
     {
@@ -204,6 +213,7 @@ void GLPKWrapper::setObjective( const List<Term> &terms )
 
 void GLPKWrapper::setTimeLimit( double seconds )
 {
+    _retValue = -1;
     _controlParameters->tm_lim = seconds * 1000;
 }
 
@@ -222,8 +232,7 @@ bool GLPKWrapper::cutoffOccurred()
 // Returns true iff the instance is infeasible
 bool GLPKWrapper::infeasible()
 {
-    std::cout << glp_get_prim_stat( _lp ) << std::endl;
-    return glp_get_prim_stat( _lp ) == GLP_NOFEAS;
+    return _retValue == GLP_ENOPFS ||  glp_get_prim_stat( _lp ) == GLP_NOFEAS;
 }
 
 // Returns true iff the instance timed out
