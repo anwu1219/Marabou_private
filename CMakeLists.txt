@@ -242,7 +242,7 @@ if (${ENABLE_GLPK})
   endif()
 
   add_library(${GLPK_LIB} SHARED IMPORTED)
-  set_target_properties(${GLPK_LIB} PROPERTIES IMPORTED_LOCATION ${GLPK_DIR}/installed/lib/libglpk.a)
+  set_target_properties(${GLPK_LIB} PROPERTIES IMPORTED_LOCATION ${GLPK_DIR}/installed/lib/libglpk.so)
   list(APPEND LIBS ${GLPK_LIB})
   target_include_directories(${GLPK_LIB} INTERFACE ${GLPK_DIR}/installed/include)
 endif()

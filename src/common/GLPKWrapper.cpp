@@ -71,6 +71,11 @@ void GLPKWrapper::resetModel()
     _controlParameters->pricing = GLP_PT_PSE; // Steepest Edge
     _controlParameters->r_test = GLP_RT_HAR; // Harris' two-pass
     _controlParameters->presolve = 1;
+    _controlParameters->tol_bnd =
+        GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS;
+    _controlParameters->tol_dj =
+    GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS;
+
 
     _retValue = -1;
     _numRows = 0;
@@ -95,21 +100,31 @@ void GLPKWrapper::addVariable( String name, double lb, double ub, VariableType )
     int col = glp_add_cols( _lp, 1 );
     _nameToVariable[name] = col;
     glp_set_col_name( _lp, col, name.ascii() );
-    glp_set_col_bnds( _lp, col, GLP_DB, lb, ub );
+    ASSERT( FloatUtils::lte( lb, ub ) );
+    if ( FloatUtils::areEqual( lb, ub ) )
+        glp_set_col_bnds( _lp, col, GLP_FX, lb, lb );
+    else
+        glp_set_col_bnds( _lp, col, GLP_DB, lb, ub );
 }
 
 void GLPKWrapper::setLowerBound( String name, double lb )
 {
     _retValue = -1;
-    glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB,
-                      lb, glp_get_col_ub( _lp, _nameToVariable[name] ) );
+    double ub = glp_get_col_ub( _lp, _nameToVariable[name] );
+    if ( FloatUtils::areEqual( lb, ub ) )
+        glp_set_col_bnds( _lp, _nameToVariable[name], GLP_FX, lb, lb );
+    else
+        glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB, lb, ub );
 }
 
 void GLPKWrapper::setUpperBound( String name, double ub )
 {
     _retValue = -1;
-    glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB,
-                      glp_get_col_lb( _lp, _nameToVariable[name] ), ub );
+    double lb = glp_get_col_lb( _lp, _nameToVariable[name] );
+    if ( FloatUtils::areEqual( lb, ub ) )
+        glp_set_col_bnds( _lp, _nameToVariable[name], GLP_FX, lb, lb );
+    else
+        glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB, lb, ub );
 }
 
 double GLPKWrapper::getLowerBound( unsigned var )
@@ -232,7 +247,8 @@ bool GLPKWrapper::cutoffOccurred()
 // Returns true iff the instance is infeasible
 bool GLPKWrapper::infeasible()
 {
-    return _retValue == GLP_ENOPFS ||  glp_get_prim_stat( _lp ) == GLP_NOFEAS;
+    return _retValue == GLP_EBOUND ||
+        _retValue == GLP_ENOPFS ||  glp_get_prim_stat( _lp ) == GLP_NOFEAS;
 }
 
 // Returns true iff the instance timed out
@@ -252,6 +268,7 @@ void GLPKWrapper::solve()
     log( Stringf( "Number of rows: %u", glp_get_num_rows( _lp ) ) );
     log( Stringf( "Number of columns: %u", glp_get_num_cols( _lp ) ) );
     _retValue = glp_simplex( _lp, _controlParameters );
+    log( Stringf( "Return code: %u, status: %u", _retValue, glp_get_status( _lp ) ) );
 }
 
 double GLPKWrapper::getValue( unsigned variable )
@@ -272,8 +289,11 @@ void GLPKWrapper::extractSolution( Map<String, double> &values, double &costOrOb
     for ( const auto &variable : _nameToVariable )
     {
         double value = glp_get_col_prim( _lp, variable.second );
-        log( Stringf( "%s (variable %d) is %f ", variable.first.ascii(),
-                      variable.second, value ) );
+        DEBUG({
+                if ( Options::get()->getInt( Options::VERBOSITY ) > 1 )
+                    log( Stringf( "%s (variable %d) is %f ", variable.first.ascii(),
+                                  variable.second, value ) );
+            });
         values[variable.first] = value;
     }
 

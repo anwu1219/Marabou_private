@@ -59,6 +59,8 @@ public:
 
         // Stay at the top level forever
         LOCAL_SEARCH,
+
+        USE_GUROBI,
     };
 
     enum IntOptions {

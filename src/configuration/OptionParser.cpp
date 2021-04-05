@@ -42,6 +42,9 @@ void OptionParser::initialize()
         ( "tableau",
           boost::program_options::bool_switch( &((*_boolOptions)[Options::CONSTRUCT_TABLEAU]) ),
           "Construct tableau" )
+        ( "use-gurobi",
+          boost::program_options::bool_switch( &((*_boolOptions)[Options::USE_GUROBI]) ),
+          "Use Gurobi instead of GLPK" )
         ( "pl-aux-eq",
           boost::program_options::bool_switch( &((*_boolOptions)[Options::PREPROCESSOR_PL_CONSTRAINTS_ADD_AUX_EQUATIONS]) ),
           "PL constraints generate auxiliary equations" )

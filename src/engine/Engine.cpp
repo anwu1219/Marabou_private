@@ -53,6 +53,7 @@ Engine::Engine()
     , _costFunctionInitialized( false )
     , _scoreMetric( Options::get()->getString( Options::SCORE_METRIC ) )
     , _constructTableau( Options::get()->getBool( Options::CONSTRUCT_TABLEAU ) )
+    , _useGurobi( Options::get()->getBool( Options::USE_GUROBI ) )
 {
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
@@ -208,7 +209,11 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
     _statistics.resetTimeStatsForMainLoop();
 
     struct timespec start = TimeUtils::sampleMicro();
-    _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
+    if ( _useGurobi )
+        _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
+    else
+        _gurobi = std::unique_ptr<GLPKWrapper>( new GLPKWrapper() );
+
     _milpEncoder = std::unique_ptr<MILPEncoder>( new MILPEncoder( _boundManager, true ) );
     _milpEncoder->encodeInputQuery( *_gurobi, _preprocessedQuery );
     ENGINE_LOG( "Query encoded in Gurobi...\n" );
@@ -1469,8 +1474,11 @@ void Engine::popContext()
 
 void Engine::checkBoundConsistency()
 {
+    printf( "Checking bound consistency...\n" );
     for ( unsigned i = 0; i < _preprocessedQuery.getNumberOfVariables(); ++i )
     {
+        ASSERT( FloatUtils::lte( _boundManager.getLowerBound( i ),
+                                 _boundManager.getUpperBound( i ) ) );
         if ( !FloatUtils::areEqual( _gurobi->getLowerBound( i ), _boundManager.getLowerBound( i ) ) )
         {
             printf( "x%u lower bound inconsistent! In Gurobi: %f, in BoundManager %f",
@@ -1484,6 +1492,7 @@ void Engine::checkBoundConsistency()
             ASSERT( false );
         }
     }
+    printf( "Checking bound consistency - done\n" );
 }
 
 void Engine::updateScore( PiecewiseLinearConstraint *constraint,
