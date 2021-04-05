@@ -27,29 +27,32 @@
 using namespace std;
 
 GLPKWrapper::GLPKWrapper()
-    : _retValue( -1 )
+    : _lp( NULL )
+    , _controlParameters( NULL )
+    , _retValue( -1 )
     , _numRows( 0 )
     , _numCols( 0 )
 {
-    _lp = glp_create_prob();
-    _controlParameters = new glp_smcp();
-    glp_set_prob_name( _lp, "prob" );
+    resetModel();
 }
 
 GLPKWrapper::~GLPKWrapper()
 {
-    freeModelIfNeeded();
-}
-
-void GLPKWrapper::freeModelIfNeeded()
-{
-    glp_delete_prob( _lp );
-    delete _controlParameters;
+    freeMemoryIfNeeded();
 }
 
 void GLPKWrapper::freeMemoryIfNeeded()
 {
-    glp_delete_prob( _lp );
+    if ( _lp )
+    {
+        glp_delete_prob( _lp );
+        _lp = NULL;
+    }
+    if ( _controlParameters )
+    {
+        delete _controlParameters;
+        _controlParameters = NULL;
+    }
 }
 
 void GLPKWrapper::resetModel()
@@ -57,6 +60,21 @@ void GLPKWrapper::resetModel()
     freeMemoryIfNeeded();
     _lp = glp_create_prob();
     glp_set_prob_name( _lp, "prob" );
+    glp_set_obj_dir( _lp, GLP_MIN );
+    glp_set_obj_coef( _lp, 0, 0 );
+
+    // The GLPK control parameters
+    _controlParameters = new glp_smcp();
+    glp_init_smcp( _controlParameters );
+    _controlParameters->msg_lev = GLP_MSG_OFF;
+    _controlParameters->meth = GLP_PRIMAL;
+    _controlParameters->pricing = GLP_PT_PSE; // Steepest Edge
+    _controlParameters->r_test = GLP_RT_HAR; // Harris' two-pass
+    _controlParameters->presolve = 1;
+
+    _retValue = -1;
+    _numRows = 0;
+    _numCols = 0;
 }
 
 void GLPKWrapper::setVerbosity( unsigned verbosity )
@@ -108,7 +126,6 @@ void GLPKWrapper::setCutoff( double cutoff )
         _controlParameters->obj_ll = cutoff;
     else
         _controlParameters->obj_ul = cutoff;
-
 }
 
 void GLPKWrapper::addLeqConstraint( const List<Term> & terms, double scalar, String )
@@ -155,24 +172,39 @@ void GLPKWrapper::addConstraint( const List<Term> &terms, double lb, double ub,
 
     glp_set_mat_row( _lp, _numRows, size, indices, weights );
 
-    delete indices;
-    delete weights;
+    delete[] indices;
+    delete[] weights;
 }
 
 void GLPKWrapper::removeConstraint( String /*constraintName*/ )
 {
 }
 
-void GLPKWrapper::setCost( const List<Term> &/*terms*/ )
+void GLPKWrapper::setCost( const List<Term> &terms )
 {
+    glp_set_obj_dir( _lp, GLP_MIN );
+    for ( const auto &term : terms )
+    {
+        unsigned col = _nameToVariable[term._variable];
+        unsigned coeff = term._coefficient;
+        glp_set_obj_coef( _lp, col, coeff );
+    }
 }
 
-void GLPKWrapper::setObjective( const List<Term> &/*terms*/ )
+void GLPKWrapper::setObjective( const List<Term> &terms )
 {
+    glp_set_obj_dir( _lp, GLP_MAX );
+    for ( const auto &term : terms )
+    {
+        unsigned col = _nameToVariable[term._variable];
+        unsigned coeff = term._coefficient;
+        glp_set_obj_coef( _lp, col, coeff );
+    }
 }
 
-void GLPKWrapper::setTimeLimit( double /*seconds*/ )
+void GLPKWrapper::setTimeLimit( double seconds )
 {
+    _controlParameters->tm_lim = seconds * 1000;
 }
 
 // Returns true iff an optimal solution has been found
@@ -207,20 +239,12 @@ bool GLPKWrapper::haveFeasibleSolution()
 
 void GLPKWrapper::solve()
 {
-    // The GLPK control parameters
-    glp_init_smcp( _controlParameters );
-    _controlParameters->msg_lev = GLP_MSG_OFF;
-    _controlParameters->meth = GLP_PRIMAL;
-    _controlParameters->pricing = GLP_PT_PSE; // Steepest Edge
-    _controlParameters->r_test = GLP_RT_HAR; // Harris' two-pass
-    _controlParameters->presolve = 1;
-
     _retValue = glp_simplex( _lp, _controlParameters );
 }
 
-double GLPKWrapper::getValue( unsigned )
+double GLPKWrapper::getValue( unsigned variable )
 {
-    return 0;
+    return glp_get_col_prim( _lp, _nameToVariable[Stringf("x%u", variable)] );
 }
 
 double GLPKWrapper::getObjective()
@@ -229,8 +253,14 @@ double GLPKWrapper::getObjective()
 }
 
 
-void GLPKWrapper::extractSolution( Map<String, double> &/*values*/, double &/*costOrObjective*/ )
+void GLPKWrapper::extractSolution( Map<String, double> &values, double &costOrObjective )
 {
+    values.clear();
+
+    for ( const auto &variable : _nameToVariable )
+        values[variable.first] = glp_get_col_prim( _lp, variable.second );
+
+    costOrObjective = getObjective();
 }
 
 double GLPKWrapper::getObjectiveBound()

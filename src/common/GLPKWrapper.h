@@ -115,7 +115,6 @@ private:
 
     Map<String, unsigned> _nameToVariable;
 
-    void freeModelIfNeeded();
     void freeMemoryIfNeeded();
 
     void addConstraint( const List<LPSolver::Term> &terms, double lb, double ub,
