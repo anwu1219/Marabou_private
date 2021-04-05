@@ -91,22 +91,22 @@ void GLPKWrapper::addVariable( String name, double lb, double ub, VariableType )
 {
     ASSERT( !_nameToVariable.exists( name ) );
     ++_numCols;
-    _nameToVariable[name] = _numCols;
-    glp_add_cols( _lp,_numCols );
-    glp_set_col_name( _lp, _numCols, name.ascii() );
-    glp_set_col_bnds( _lp, _numCols, GLP_DB, lb, ub );
+    int col = glp_add_cols( _lp, 1 );
+    _nameToVariable[name] = col;
+    glp_set_col_name( _lp, col, name.ascii() );
+    glp_set_col_bnds( _lp, col, GLP_DB, lb, ub );
 }
 
 void GLPKWrapper::setLowerBound( String name, double lb )
 {
     glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB,
-                      lb, getUpperBound( getVariable( name ) ) );
+                      lb, glp_get_col_ub( _lp, _nameToVariable[name] ) );
 }
 
 void GLPKWrapper::setUpperBound( String name, double ub )
 {
     glp_set_col_bnds( _lp, _nameToVariable[name], GLP_DB,
-                      getLowerBound( getVariable( name ) ), ub );
+                      glp_get_col_lb( _lp, _nameToVariable[name] ), ub );
 }
 
 double GLPKWrapper::getLowerBound( unsigned var )
@@ -131,31 +131,31 @@ void GLPKWrapper::setCutoff( double cutoff )
 void GLPKWrapper::addLeqConstraint( const List<Term> & terms, double scalar, String )
 {
     ++_numRows;
-    glp_add_rows( _lp, _numRows );
-    glp_set_row_name( _lp, _numRows, Stringf( "c%u", _numRows ).ascii() );
-    addConstraint( terms, 0, scalar, GLP_UP );
+    int row = glp_add_rows( _lp, 1 );
+    glp_set_row_name( _lp, row, Stringf( "c%u", row ).ascii() );
+    addConstraint( terms, 0, scalar, GLP_UP, row );
 }
 
 void GLPKWrapper::addGeqConstraint( const List<Term> &terms, double scalar, String )
 {
     ++_numRows;
-    glp_add_rows( _lp, _numRows );
-    glp_set_row_name( _lp, _numRows, Stringf( "c%u", _numRows ).ascii() );
-    addConstraint( terms, scalar, 0, GLP_LO );
+    int row = glp_add_rows( _lp, 1 );
+    glp_set_row_name( _lp, row, Stringf( "c%u", row ).ascii() );
+    addConstraint( terms, scalar, 0, GLP_LO, row );
 }
 
 void GLPKWrapper::addEqConstraint( const List<Term> &terms, double scalar, String )
 {
     ++_numRows;
-    glp_add_rows( _lp, _numRows );
-    glp_set_row_name( _lp, _numRows, Stringf( "c%u", _numRows ).ascii() );
-    addConstraint( terms, scalar, scalar, GLP_FX );
+    int row = glp_add_rows( _lp, 1 );
+    glp_set_row_name( _lp, row, Stringf( "c%u", row ).ascii() );
+    addConstraint( terms, scalar, scalar, GLP_FX, row );
 }
 
 void GLPKWrapper::addConstraint( const List<Term> &terms, double lb, double ub,
-                                   int sense )
+                                 int sense, int row )
 {
-    glp_set_row_bnds( _lp, _numRows, sense, lb, ub );
+    glp_set_row_bnds( _lp, row, sense, lb, ub );
     int size = terms.size();
     int *indices = new int[size + 1];
     double *weights = new double[size + 1];
@@ -164,13 +164,13 @@ void GLPKWrapper::addConstraint( const List<Term> &terms, double lb, double ub,
     for ( const auto &term : terms )
     {
         unsigned col = _nameToVariable[term._variable];
-        unsigned coeff = term._coefficient;
+        double coeff = term._coefficient;
         indices[counter] = col;
         weights[counter] = coeff;
         ++counter;
     }
 
-    glp_set_mat_row( _lp, _numRows, size, indices, weights );
+    glp_set_mat_row( _lp, row, size, indices, weights );
 
     delete[] indices;
     delete[] weights;
@@ -186,7 +186,7 @@ void GLPKWrapper::setCost( const List<Term> &terms )
     for ( const auto &term : terms )
     {
         unsigned col = _nameToVariable[term._variable];
-        unsigned coeff = term._coefficient;
+        double coeff = term._coefficient;
         glp_set_obj_coef( _lp, col, coeff );
     }
 }
@@ -197,7 +197,7 @@ void GLPKWrapper::setObjective( const List<Term> &terms )
     for ( const auto &term : terms )
     {
         unsigned col = _nameToVariable[term._variable];
-        unsigned coeff = term._coefficient;
+        double coeff = term._coefficient;
         glp_set_obj_coef( _lp, col, coeff );
     }
 }
@@ -210,7 +210,7 @@ void GLPKWrapper::setTimeLimit( double seconds )
 // Returns true iff an optimal solution has been found
 bool GLPKWrapper::optimal()
 {
-    return glp_get_prim_stat( _lp ) == GLP_OPT;
+    return glp_get_status( _lp ) == GLP_OPT;
 }
 
 // Returns true iff the cutoff value was used
@@ -222,6 +222,7 @@ bool GLPKWrapper::cutoffOccurred()
 // Returns true iff the instance is infeasible
 bool GLPKWrapper::infeasible()
 {
+    std::cout << glp_get_prim_stat( _lp ) << std::endl;
     return glp_get_prim_stat( _lp ) == GLP_NOFEAS;
 }
 
@@ -239,6 +240,8 @@ bool GLPKWrapper::haveFeasibleSolution()
 
 void GLPKWrapper::solve()
 {
+    log( Stringf( "Number of rows: %u", glp_get_num_rows( _lp ) ) );
+    log( Stringf( "Number of columns: %u", glp_get_num_cols( _lp ) ) );
     _retValue = glp_simplex( _lp, _controlParameters );
 }
 
@@ -258,7 +261,12 @@ void GLPKWrapper::extractSolution( Map<String, double> &values, double &costOrOb
     values.clear();
 
     for ( const auto &variable : _nameToVariable )
-        values[variable.first] = glp_get_col_prim( _lp, variable.second );
+    {
+        double value = glp_get_col_prim( _lp, variable.second );
+        log( Stringf( "%s (variable %d) is %f ", variable.first.ascii(),
+                      variable.second, value ) );
+        values[variable.first] = value;
+    }
 
     costOrObjective = getObjective();
 }

@@ -118,7 +118,7 @@ private:
     void freeMemoryIfNeeded();
 
     void addConstraint( const List<LPSolver::Term> &terms, double lb, double ub,
-                        int sense );
+                        int sense, int row );
 
     static unsigned getVariable( String name )
     {

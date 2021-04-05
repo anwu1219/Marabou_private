@@ -39,11 +39,11 @@ public:
     void test_optimize()
     {
 #ifdef ENABLE_GLPK
-        GLPKWrapper gurobi;
+        GLPKWrapper glpk;
 
-        gurobi.addVariable( "x", 0, 3 );
-        gurobi.addVariable( "y", 0, 3 );
-        gurobi.addVariable( "z", 0, 3 );
+        glpk.addVariable( "x", 0, 3 );
+        glpk.addVariable( "y", 0, 3 );
+        glpk.addVariable( "z", 0, 3 );
 
         // x + y + z <= 5
         List<LPSolver::Term> contraint = {
@@ -52,7 +52,7 @@ public:
             GLPKWrapper::Term( 1, "z" ),
         };
 
-        gurobi.addLeqConstraint( contraint, 5 );
+        glpk.addLeqConstraint( contraint, 5 );
 
         // Cost: -x - 2y + z
         List<LPSolver::Term> cost = {
@@ -61,15 +61,15 @@ public:
             GLPKWrapper::Term( +1, "z" ),
         };
 
-        gurobi.setCost( cost );
+        glpk.setCost( cost );
 
         // Solve and extract
-        TS_ASSERT_THROWS_NOTHING( gurobi.solve() );
+        TS_ASSERT_THROWS_NOTHING( glpk.solve() );
 
         Map<String, double> solution;
         double costValue;
 
-        TS_ASSERT_THROWS_NOTHING( gurobi.extractSolution( solution, costValue ) );
+        TS_ASSERT_THROWS_NOTHING( glpk.extractSolution( solution, costValue ) );
 
         TS_ASSERT( FloatUtils::areEqual( solution["x"], 2 ) );
         TS_ASSERT( FloatUtils::areEqual( solution["y"], 3 ) );
@@ -79,16 +79,16 @@ public:
 
 #else
         TS_ASSERT( true );
-#endif // ENABLE_GUROBI
+#endif // ENABLE_GLPK
     }
 
     void test_incremental()
     {
-#ifdef ENABLE_GUROBI
-        GLPKWrapper gurobi;
+#ifdef ENABLE_GLPK
+        GLPKWrapper glpk;
 
-        gurobi.addVariable( "x", 2, 4 );
-        gurobi.addVariable( "y", 3, 5 );
+        glpk.addVariable( "x", 2, 4 );
+        glpk.addVariable( "y", 3, 5 );
 
         // x + y <= 5
         List<LPSolver::Term> contraint = {
@@ -96,32 +96,39 @@ public:
             GLPKWrapper::Term( 1, "y" )
         };
 
-        gurobi.addLeqConstraint( contraint, 5 );
+        glpk.addLeqConstraint( contraint, 5 );
 
         // Solve and extract
-        TS_ASSERT_THROWS_NOTHING( gurobi.solve() );
+        TS_ASSERT_THROWS_NOTHING( glpk.solve() );
 
-        TS_ASSERT( gurobi.haveFeasibleSolution() );
+        TS_ASSERT( glpk.haveFeasibleSolution() );
+        TS_ASSERT( glpk.optimal() );
+        TS_ASSERT( !glpk.infeasible() );
 
-        TS_ASSERT_THROWS_NOTHING( gurobi.setLowerBound( "y", 4 ) );
+        Map<String, double> solution;
+        double costValue;
 
-        TS_ASSERT_THROWS_NOTHING( gurobi.updateModel() );
+        TS_ASSERT_THROWS_NOTHING( glpk.extractSolution( solution, costValue ) );
 
-        TS_ASSERT( !gurobi.haveFeasibleSolution() );
+        TS_ASSERT( FloatUtils::areEqual( solution["x"], 2 ) );
+        TS_ASSERT( FloatUtils::areEqual( solution["y"], 3 ) );
 
-        TS_ASSERT_THROWS_NOTHING( gurobi.solve() );
+        TS_ASSERT_THROWS_NOTHING( glpk.setLowerBound( "y", 4 ) );
 
-        TS_ASSERT( gurobi.infeasible() );
+        TS_ASSERT_THROWS_NOTHING( glpk.solve() );
 
-        TS_ASSERT_THROWS_NOTHING( gurobi.setLowerBound( "y", 2 ) );
-        TS_ASSERT_THROWS_NOTHING( gurobi.updateModel() );
+        TS_ASSERT( glpk.infeasible() );
 
-        TS_ASSERT( !gurobi.infeasible() );
-        TS_ASSERT( !gurobi.haveFeasibleSolution() );
+        TS_ASSERT_THROWS_NOTHING( glpk.setLowerBound( "y", 2 ) );
 
-        TS_ASSERT_THROWS_NOTHING( gurobi.solve() );
+        TS_ASSERT( !glpk.infeasible() );
+        TS_ASSERT( !glpk.haveFeasibleSolution() );
 
-        TS_ASSERT( gurobi.haveFeasibleSolution() );
+        TS_ASSERT_THROWS_NOTHING( glpk.solve() );
+
+        TS_ASSERT( glpk.haveFeasibleSolution() );
+        TS_ASSERT( glpk.optimal() );
+        TS_ASSERT( !glpk.infeasible() );
 
 #else
         TS_ASSERT( true );

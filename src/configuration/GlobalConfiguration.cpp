@@ -67,7 +67,7 @@ const double GlobalConfiguration::GAUSSIAN_ELIMINATION_PIVOT_SCALE_THRESHOLD = 0
 
 #ifdef ENABLE_GUROBI
 const unsigned GlobalConfiguration::GUROBI_NUMBER_OF_THREADS = 1;
-const bool GlobalConfiguration::GUROBI_LOGGING = false;
+const bool GlobalConfiguration::GUROBI_LOGGING = true;
 #endif // ENABLE_GUROBI
 
 // Logging - note that it is enabled only in Debug mode
