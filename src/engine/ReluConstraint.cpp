@@ -1047,7 +1047,6 @@ void ReluConstraint::addCostFunctionComponent( Map<unsigned, double> &cost )
 
 void ReluConstraint::addCostFunctionComponentByOutputValue( Map<unsigned, double> &cost, double fValue )
 {
-    std::cout << fValue << std::endl;
     PLConstraint_LOG( Stringf( "Relu constraint. b: %u, bValue: %.2lf. blb: %.2lf, bub: %.2lf f: %u, fValue: %.2lf. ",
                                _b, _assignment.get( _b ), _lowerBounds[_b], _upperBounds[_b], _f, _assignment.get( _f ) ).ascii() );
 

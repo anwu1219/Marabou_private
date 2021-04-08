@@ -139,7 +139,7 @@ public:
       The various piecewise-linear constraints, sorted in topological
       order. The sorting is done externally.
     */
-    List<PiecewiseLinearConstraint *> getConstraintsInTopologicalOrder();
+    List<PiecewiseLinearConstraint *> &getConstraintsInTopologicalOrder();
     void addConstraintInTopologicalOrder( PiecewiseLinearConstraint *constraint );
     void removeConstraintFromTopologicalOrder( PiecewiseLinearConstraint *constraint );
 

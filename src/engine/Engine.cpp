@@ -891,12 +891,14 @@ bool Engine::solve( unsigned timeoutInSeconds )
                 continue;
             }
 
+            /*
             if ( _tableau->basisMatrixAvailable() )
             {
                 explicitBasisBoundTightening();
                 applyAllBoundTightenings();
                 applyAllValidConstraintCaseSplits();
             }
+            */
 
             if ( splitJustPerformed )
             {
@@ -1243,7 +1245,7 @@ bool Engine::performSimplexStep()
     if ( !fakePivot )
     {
         _tableau->computePivotRow();
-        // _rowBoundTightener->examinePivotRow();
+        _rowBoundTightener->examinePivotRow();
     }
 
     // Perform the actual pivot
