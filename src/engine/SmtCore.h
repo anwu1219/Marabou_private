@@ -191,6 +191,8 @@ private:
 
     GurobiWrapper *_gurobi;
 
+    bool _localSearch;
+
     unsigned _numberOfRandomFlips;
 };
 

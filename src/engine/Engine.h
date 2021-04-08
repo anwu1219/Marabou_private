@@ -32,8 +32,10 @@
 #include "InputQuery.h"
 #include "Map.h"
 #include "MILPEncoder.h"
+#include "NetworkLevelReasoner.h"
 #include "PrecisionRestorer.h"
 #include "Preprocessor.h"
+#include "PseudoCostTracker.h"
 #include "SignalHandler.h"
 #include "SmtCore.h"
 #include "Statistics.h"
@@ -187,6 +189,8 @@ private:
       Collect and print various statistics.
     */
     Statistics _statistics;
+
+    PseudoCostTracker _costTracker;
 
     /*
       The tableau object maintains the equations, assignments and bounds.
@@ -528,7 +532,7 @@ private:
     */
     PiecewiseLinearConstraint *pickSplitPLConstraintBasedOnPolarity();
 
-    PiecewiseLinearConstraint *pickSplitPLConstraintBABSR();
+    PiecewiseLinearConstraint *pickSplitPLConstraintBasedOnSOI();
 
     /*
       Pick the first unfixed ReLU in the topological order
@@ -622,8 +626,10 @@ private:
 
     bool _violationThresholdPerReLU;
 
-    Map<unsigned, double> _heuristicCost;
+    double _probabilityDensityParameter;
 
+    Map<unsigned, double> _heuristicCost;
+    Map<PiecewiseLinearConstraint *, PhaseStatus> _previousHeuristicCost;
     Vector<PiecewiseLinearConstraint *> _plConstraintsInHeuristicCost;
 
     bool solveWithGurobi( unsigned timeoutInSeconds );
@@ -644,19 +650,7 @@ private:
     /*
       Based on current assignment
     */
-    void initiateCostFunctionForLocalSearchBasedOnCurrentAssignment
-    ( const List<PiecewiseLinearConstraint *> &plConstraintsToAdd );
-
-    /*
-      Based on input assignment
-    */
     void initiateCostFunctionForLocalSearchBasedOnInputAssignment
-    ( const List<PiecewiseLinearConstraint *> &plConstraintsToAdd );
-
-    /*
-      Pick a phase at uniform random
-    */
-    void initiateCostFunctionForLocalSearchRandomly
     ( const List<PiecewiseLinearConstraint *> &plConstraintsToAdd );
 
     // Optimize w.r.t. the current heuristic cost function
@@ -672,18 +666,7 @@ private:
       scenario 2:
           If the local optima is zero, we add more PLConstraints to the cost function.
     */
-    void updateHeuristicCost();
-
-    /*
-      Heuristic to flip the cost component of a PLConstraint
-      following the heuristics from WalkSAT
-      flip the cost term of the first PLConstraint that reduces the cost
-
-      if not available,
-      with probability p, flip the cost term of the first PLConstraint that increases the cost the least.
-      with probability 1- p, flip the cost term of a randomly chosen PLConstraint
-    */
-    void updateHeuristicCostWalkSAT();
+    PiecewiseLinearConstraint *updateHeuristicCost();
 
     /*
       Heuristic to flip the cost component of a PLConstraint:
@@ -692,7 +675,7 @@ private:
       with probability p, flip the cost term of a randomly chosen PLConstraint
       with probability 1 - p, flip the cost term of the PLConstraint that reduces in the greatest decline in the cost
     */
-    void updateHeuristicCostGWSAT();
+    PiecewiseLinearConstraint *updateHeuristicCostGWSAT2();
 
     /*
       SOI helper functions
@@ -704,6 +687,13 @@ private:
 
     // Notify the plConstraints of the assignments from Gurobi
     void notifyPLConstraintsAssignments();
+
+    void undoLastHeuristicCostUpdate();
+
+    bool acceptProposedUpdate( double previousCost, double currentCost );
+
+    void updateScore( PiecewiseLinearConstraint *constraint,
+                      double previousCost, double currentCost );
 
     /*
       For SOI Debugging

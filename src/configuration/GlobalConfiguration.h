@@ -23,6 +23,8 @@ class GlobalConfiguration
 public:
     static void print();
 
+    static const double EXPONENTIAL_MOVING_AVERAGE_ALPHA;
+
     static const bool USE_POLARITY_BASED_DIRECTION_HEURISTICS;
 
     // The default epsilon used for comparing doubles
@@ -241,7 +243,7 @@ public:
     static const bool MPS_PARSER_LOGGING;
     static const bool PLCONSTRAINT_LOGGING;
     static const bool LOCAL_SEARCH_LOGGING;
-
+    static const bool PSEUDO_COST_TRACKER_LOGGING;
 };
 
 #endif // __GlobalConfiguration_h__

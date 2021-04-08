@@ -69,6 +69,7 @@ Engine::Engine()
     , _initializationStrategy( Options::get()->getString( Options::INITIALIZATION_STRATEGY ) )
     , _addDynamicConstraint( Options::get()->getBool( Options::ADD_DYNAMIC_CONSTRAINTS ) )
     , _violationThresholdPerReLU( Options::get()->getBool( Options::VIOLATION_THRESHOLD_PER_RELU ) )
+    , _probabilityDensityParameter( Options::get()->getFloat( Options::PROBABILITY_DENSITY_PARAMETER ) )
 {
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
@@ -142,20 +143,6 @@ void Engine::dumpHeuristicCost()
     return;
 }
 
-void Engine::initiateCostFunctionForLocalSearchBasedOnCurrentAssignment
-( const List<PiecewiseLinearConstraint *> &plConstraintsToAdd )
-{
-    for ( const auto &plConstraint : plConstraintsToAdd )
-    {
-        ASSERT( !_plConstraintsInHeuristicCost.exists( plConstraint ) );
-        if ( plConstraint->isActive() && !plConstraint->phaseFixed() )
-        {
-            plConstraint->addCostFunctionComponent( _heuristicCost );
-            _plConstraintsInHeuristicCost.append( plConstraint );
-        }
-    }
-}
-
 void Engine::initiateCostFunctionForLocalSearchBasedOnInputAssignment
 ( const List<PiecewiseLinearConstraint *> &plConstraintsToAdd )
 {
@@ -165,26 +152,9 @@ void Engine::initiateCostFunctionForLocalSearchBasedOnInputAssignment
         ASSERT( !_plConstraintsInHeuristicCost.exists( plConstraint ) );
         if ( plConstraint->isActive() && !plConstraint->phaseFixed() )
         {
-            auto index = _networkLevelReasoner->getNeuronIndexFromPLConstraint( plConstraint );
+            NLR::NeuronIndex index = _networkLevelReasoner->getNeuronIndexFromPLConstraint( plConstraint );
             double value = _networkLevelReasoner->getLayer( index._layer )->getAssignment()[index._neuron];
             plConstraint->addCostFunctionComponentByOutputValue( _heuristicCost, value );
-            _plConstraintsInHeuristicCost.append( plConstraint );
-        }
-    }
-}
-
-void Engine::initiateCostFunctionForLocalSearchRandomly
-( const List<PiecewiseLinearConstraint *> &plConstraintsToAdd )
-{
-    for ( const auto &plConstraint : plConstraintsToAdd )
-    {
-        ASSERT( !_plConstraintsInHeuristicCost.exists( plConstraint ) );
-        if ( plConstraint->isActive() && !plConstraint->phaseFixed() )
-        {
-            Vector<PhaseStatus> phaseStatuses = plConstraint->getAlternativeHeuristicPhaseStatus();
-            unsigned phaseIndex = (unsigned) rand() % phaseStatuses.size();
-            PhaseStatus phaseStatusToSet = phaseStatuses[phaseIndex];
-            plConstraint->addCostFunctionComponent( _heuristicCost, phaseStatusToSet );
             _plConstraintsInHeuristicCost.append( plConstraint );
         }
     }
@@ -200,12 +170,8 @@ void Engine::initiateCostFunctionForLocalSearch()
         plConstraint->resetCostFunctionComponent();
     _plConstraintsInHeuristicCost.clear();
     _heuristicCost.clear();
-    if ( _initializationStrategy == "currentAssignment" )
-        initiateCostFunctionForLocalSearchBasedOnCurrentAssignment( _plConstraints );
-    else if ( _initializationStrategy == "inputAssignment" )
-        initiateCostFunctionForLocalSearchBasedOnInputAssignment( _plConstraints );
-    else if ( _initializationStrategy == "random" )
-        initiateCostFunctionForLocalSearchRandomly( _plConstraints );
+
+    initiateCostFunctionForLocalSearchBasedOnInputAssignment( _plConstraints );
 
     SOI_LOG( "initiating cost function for local search - done" );
     struct timespec end = TimeUtils::sampleMicro();
@@ -242,20 +208,18 @@ void Engine::updateCostTermsForSatisfiedPLConstraints()
     _statistics.addTimeForUpdatingCostForLocalSearch( TimeUtils::timePassed( start, end ) );
 }
 
-void Engine::updateHeuristicCostWalkSAT()
+PiecewiseLinearConstraint *Engine::updateHeuristicCostGWSAT2()
 {
     PiecewiseLinearConstraint *plConstraintToFlip = NULL;
     PhaseStatus phaseStatusToFlipTo = PHASE_NOT_FIXED;
 
-    SOI_LOG( Stringf( "Heuristic cost before updates: %f", computeHeuristicCost() ).ascii() ) ;
-
     // Flip the cost term that reduces the cost by the most
     SOI_LOG( "Using default strategy to pick a PLConstraint and flip its heuristic cost..." );
-    double maxReducedCost = FloatUtils::negativeInfinity();
-    for ( const auto &plConstraint : _violatedPlConstraints )
+    double maxReducedCost = 0;
+    for ( const auto &plConstraint : _plConstraintsInHeuristicCost )
     {
         double reducedCost = 0;
-        PhaseStatus phaseStatusOfReducedCost = plConstraint->getAddedHeuristicCost();
+        PhaseStatus phaseStatusOfReducedCost = plConstraint->getPhaseOfHeuristicCost();
         ASSERT( phaseStatusOfReducedCost != PhaseStatus::PHASE_NOT_FIXED );
         plConstraint->getReducedHeuristicCost( reducedCost, phaseStatusOfReducedCost );
 
@@ -267,71 +231,7 @@ void Engine::updateHeuristicCostWalkSAT()
         }
     }
 
-    ASSERT( plConstraintToFlip );
-    if ( maxReducedCost < 0 )
-    {
-        bool useNoiseStrategy = ( (float) rand() / RAND_MAX ) <= _noiseParameter;
-        if ( useNoiseStrategy )
-        {
-            // If using noise stategy, we just flip a random
-            // PLConstraint.
-            SOI_LOG( "Using noise strategy to pick a PLConstraint and flip its heuristic cost..." );
-            unsigned plConstraintIndex = (unsigned) rand() % _plConstraintsInHeuristicCost.size();
-            plConstraintToFlip = _plConstraintsInHeuristicCost[plConstraintIndex];
-            Vector<PhaseStatus> phaseStatuses = plConstraintToFlip->getAlternativeHeuristicPhaseStatus();
-            unsigned phaseIndex = (unsigned) rand() % phaseStatuses.size();
-            phaseStatusToFlipTo = phaseStatuses[phaseIndex];
-
-            if ( !_violationThresholdPerReLU )
-                _smtCore.reportRandomFlip();
-        }
-    }
-
-    ASSERT( plConstraintToFlip && phaseStatusToFlipTo != PHASE_NOT_FIXED );
-    plConstraintToFlip->addCostFunctionComponent( _heuristicCost, phaseStatusToFlipTo );
-    if ( _violationThresholdPerReLU )
-        _smtCore.reportViolatedConstraint( plConstraintToFlip );
-    return;
-}
-
-
-void Engine::updateHeuristicCostGWSAT()
-{
-    /*
-      Following the heuristics from
-      https://www.researchgate.net/publication/2637561_Noise_Strategies_for_Improving_Local_Search
-      with probability p, flip the cost term of a randomly chosen unsatisfied PLConstraint
-      with probability 1 - p, flip the cost term of the PLConstraint that reduces in the greatest decline in the cost
-    */
-    bool useNoiseStrategy = ( (float) rand() / RAND_MAX ) <= _noiseParameter;
-
-    PiecewiseLinearConstraint *plConstraintToFlip = NULL;
-    PhaseStatus phaseStatusToFlipTo = PHASE_NOT_FIXED;
-
-    SOI_LOG( Stringf( "Heuristic cost before updates: %f", computeHeuristicCost() ).ascii() ) ;
-
-    if ( !useNoiseStrategy )
-    {
-        // Flip the cost term that reduces the cost by the most
-        SOI_LOG( "Using default strategy to pick a PLConstraint and flip its heuristic cost..." );
-        double maxReducedCost = 0;
-        for ( const auto &plConstraint : _violatedPlConstraints )
-        {
-            double reducedCost = 0;
-            PhaseStatus phaseStatusOfReducedCost = plConstraint->getAddedHeuristicCost();
-            ASSERT( phaseStatusOfReducedCost != PhaseStatus::PHASE_NOT_FIXED );
-            plConstraint->getReducedHeuristicCost( reducedCost, phaseStatusOfReducedCost );
-
-            if ( reducedCost > maxReducedCost )
-            {
-                maxReducedCost = reducedCost;
-                plConstraintToFlip = plConstraint;
-                phaseStatusToFlipTo = phaseStatusOfReducedCost;
-            }
-        }
-    }
-
-    if ( !plConstraintToFlip ||  useNoiseStrategy )
+    if ( !plConstraintToFlip )
     {
         // Assume violated pl constraints has been updated.
         // If using noise stategy, we just flip a random
@@ -342,32 +242,33 @@ void Engine::updateHeuristicCostGWSAT()
         Vector<PhaseStatus> phaseStatuses = plConstraintToFlip->getAlternativeHeuristicPhaseStatus();
         unsigned phaseIndex = (unsigned) rand() % phaseStatuses.size();
         phaseStatusToFlipTo = phaseStatuses[phaseIndex];
-
-        if ( !_violationThresholdPerReLU )
-            _smtCore.reportRandomFlip();
     }
 
     ASSERT( plConstraintToFlip && phaseStatusToFlipTo != PHASE_NOT_FIXED );
+
     plConstraintToFlip->addCostFunctionComponent( _heuristicCost, phaseStatusToFlipTo );
-    if ( _violationThresholdPerReLU )
-        _smtCore.reportViolatedConstraint( plConstraintToFlip );
-    return;
+    return plConstraintToFlip;
 }
 
-void Engine::updateHeuristicCost()
+PiecewiseLinearConstraint *Engine::updateHeuristicCost()
 {
     struct timespec start = TimeUtils::sampleMicro();
     SOI_LOG( Stringf( "Updating heuristic cost with strategy %s", _flippingStrategy.ascii() ).ascii() );
+    SOI_LOG( Stringf( "Heuristic cost before updates: %f", computeHeuristicCost() ).ascii() ) ;
 
-    if ( _flippingStrategy == "gwsat" )
-        updateHeuristicCostGWSAT();
-    else if ( _flippingStrategy == "walksat" )
-        updateHeuristicCostWalkSAT();
+    _previousHeuristicCost.clear();
+    for ( const auto &constraint : _plConstraintsInHeuristicCost )
+    {
+        _previousHeuristicCost[constraint] = constraint->getPhaseOfHeuristicCost();
+    }
+
+    PiecewiseLinearConstraint *lastFlippedConstraint = updateHeuristicCostGWSAT2();
 
     SOI_LOG( Stringf( "Heuristic cost after updates: %f", computeHeuristicCost() ).ascii() ) ;
     SOI_LOG( "Updating heuristic cost - done\n" );
     struct timespec end = TimeUtils::sampleMicro();
     _statistics.addTimeForUpdatingCostForLocalSearch( TimeUtils::timePassed( start, end ) );
+    return lastFlippedConstraint;
 }
 
 void Engine::checkAllVariblesInBound()
@@ -395,53 +296,37 @@ void Engine::optimizeForHeuristicCost()
 {
     ASSERT( _tableau->isOptimizing() );
 
-    if ( _solveWithMILP || _gurobiForLP )
+    SOI_LOG( "Optimizing w.r.t. the current heuristic cost..." );
+    bool localOptimaReached = false;
+    while ( !localOptimaReached )
     {
-        struct timespec start = TimeUtils::sampleMicro();
-        List<GurobiWrapper::Term> terms;
-        for ( const auto &term : _heuristicCost )
-            terms.append( GurobiWrapper::Term( term.second,
-                                               Stringf( "x%u", term.first ) ) );
-        _gurobi->setCost( terms );
-        _gurobi->solve();
-        notifyPLConstraintsAssignments();
-        struct timespec end = TimeUtils::sampleMicro();
-        _statistics.addTimeSimplexSteps( TimeUtils::timePassed( start, end ) );
-    }
-    else
-    {
-        SOI_LOG( "Optimizing w.r.t. the current heuristic cost..." );
-        bool localOptimaReached = false;
-        while ( !localOptimaReached )
+        DEBUG({
+                if ( _verbosity == 2 )
+                    SOI_LOG( Stringf( "Current heuristic cost: %f", computeHeuristicCost() ).ascii() ) ;
+            });
+
+        DEBUG( _tableau->verifyInvariants() );
+
+        mainLoopStatistics();
+        if ( _verbosity > 1 &&  _statistics.getNumMainLoopIterations() %
+             GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY == 0 )
+            _statistics.print();
+
+        // Possible restoration due to preceision degradation
+        if ( shouldCheckDegradation() && highDegradation() )
         {
-            DEBUG({
-                    if ( _verbosity == 2 )
-                        SOI_LOG( Stringf( "Current heuristic cost: %f", computeHeuristicCost() ).ascii() ) ;
-                });
-
-            DEBUG( _tableau->verifyInvariants() );
-
-            mainLoopStatistics();
-            if ( _verbosity > 1 &&  _statistics.getNumMainLoopIterations() %
-                 GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY == 0 )
-                _statistics.print();
-
-            // Possible restoration due to preceision degradation
-            if ( shouldCheckDegradation() && highDegradation() )
-            {
-                performPrecisionRestoration( PrecisionRestorer::RESTORE_BASICS );
-                continue;
-            }
-
-            checkAllVariblesInBound();
-
-            if ( !_tableau->allBoundsValid() )
-            {
-                // Some variable bounds are invalid, so the query is unsat
-                throw InfeasibleQueryException();
-            }
-            localOptimaReached = performSimplexStep();
+            performPrecisionRestoration( PrecisionRestorer::RESTORE_BASICS );
+            continue;
         }
+
+        checkAllVariblesInBound();
+
+        if ( !_tableau->allBoundsValid() )
+        {
+            // Some variable bounds are invalid, so the query is unsat
+            throw InfeasibleQueryException();
+        }
+        localOptimaReached = performSimplexStep();
     }
     SOI_LOG( "Optimizing w.r.t. the current heuristic cost - done\n" );
 }
@@ -459,38 +344,79 @@ bool Engine::performLocalSearch()
     ENGINE_LOG( "Performing local search..." );
     _tableau->optimizing();
 
-    if ( _solveWithMILP || _gurobiForLP )
-        notifyPLConstraintsAssignments();
-
     // All the linear constraints have been satisfied at this point.
     // Update the cost function
     initiateCostFunctionForLocalSearch();
+    optimizeForHeuristicCost();
+    updateCostTermsForSatisfiedPLConstraints();
+    double previousCost = computeHeuristicCost();
+    _smtCore.reportRandomFlip();
+    double currentCost = FloatUtils::infinity();
+
     ASSERT( allVarsWithinBounds() );
 
+    bool lastCostAccepted = true;
     while ( !_smtCore.needToSplit() )
     {
-        optimizeForHeuristicCost();
-
-        updateCostTermsForSatisfiedPLConstraints();
-
-        collectViolatedPlConstraints();
-        if ( allPlConstraintsHold() )
+        if ( lastCostAccepted )
         {
-            ASSERT( FloatUtils::isZero( computeHeuristicCost() ) );
-            _tableau->notOptimizing();
-            ENGINE_LOG( "Performing local search - done" );
-            return true;
+            collectViolatedPlConstraints();
+            if ( allPlConstraintsHold() )
+            {
+                ASSERT( FloatUtils::isZero( computeHeuristicCost() ) );
+                _tableau->notOptimizing();
+                ENGINE_LOG( "Performing local search - done" );
+                return true;
+            }
+            else
+            {
+                ASSERT( !FloatUtils::isZero( computeHeuristicCost() ) );
+            }
+        }
+
+        PiecewiseLinearConstraint *lastFlippedConstraint = updateHeuristicCost();
+        optimizeForHeuristicCost();
+        updateCostTermsForSatisfiedPLConstraints();
+        currentCost = computeHeuristicCost();
+
+        updateScore( lastFlippedConstraint, previousCost, currentCost );
+
+        if ( !acceptProposedUpdate( previousCost, currentCost ) )
+        {
+            _smtCore.reportRandomFlip();
+            undoLastHeuristicCostUpdate();
+            lastCostAccepted = false;
         }
         else
         {
-            updateHeuristicCost();
-            continue;
+            previousCost = currentCost;
+            lastCostAccepted = true;
         }
     }
-
     _tableau->notOptimizing();
     ENGINE_LOG( "Performing local search - done" );
     return false;
+}
+
+bool Engine::acceptProposedUpdate( double previousCost, double currentCost )
+{
+    double proposalProbabilityRatio = 1;
+
+    double prob = exp( -_probabilityDensityParameter * ( currentCost - previousCost ) ) * proposalProbabilityRatio;
+    SOI_LOG( Stringf( "Previous Cost: %.2f. Cost after proposed flip: %.2f."
+                       " Proposal probability ratio: %.2f.\n"
+                       "Probability to accept the flip: %.2lf%%", previousCost, currentCost,
+                       proposalProbabilityRatio, prob * 100 ).ascii() );
+
+    bool flip = prob >= 1 || ( (float) rand() / RAND_MAX ) < prob;
+
+    return flip;
+}
+
+void Engine::undoLastHeuristicCostUpdate()
+{
+    for ( const auto &pair : _previousHeuristicCost )
+        pair.first->addCostFunctionComponent( _heuristicCost, pair.second );
 }
 
 bool Engine::concretizeAndCheckInputAssignment()
@@ -529,7 +455,7 @@ void Engine::concretizeInputAssignment()
     for ( unsigned i = 0; i < numInputVariables; ++i )
     {
         unsigned variable = _preprocessedQuery.inputVariableByIndex( i );
-        inputAssignment[i] = ( _solveWithMILP || _gurobiForLP ) ? _gurobi->getValue( variable ) : _tableau->getValue( variable );
+        inputAssignment[i] = _tableau->getValue( variable );
     }
 
     // Evaluate the network for this assignment
@@ -872,6 +798,8 @@ bool Engine::solve( unsigned timeoutInSeconds )
     if ( _gurobiForLP )
         return solveWithGurobi( timeoutInSeconds );
 
+    _costTracker.initialize( _plConstraints );
+
     updateDirections();
     addDynamicConstraints();
 
@@ -999,68 +927,20 @@ bool Engine::solve( unsigned timeoutInSeconds )
             if ( allVarsWithinBounds() )
             {
                 collectViolatedPlConstraints();
-                if ( _localSearch && !allPlConstraintsHold() )
+                if ( allPlConstraintsHold() || performLocalSearch() )
                 {
-                    if ( performLocalSearch() )
+                    // Either throws InfeasibleQueryException,
+                    // or contains a satisfying assignment
+                    // or conclude that splitting is needed
+                    _exitCode = Engine::SAT;
+                    if ( _verbosity > 0 )
                     {
-                        // Either throws InfeasibleQueryException,
-                        // or contains a satisfying assignment
-                        // or conclude that splitting is needed
-                        _exitCode = Engine::SAT;
-                        if ( _verbosity > 0 )
-                        {
-                            printf( "\nEngine::solve: sat assignment found\n" );
-                            _statistics.print();
-                        }
-                        return true;
+                        printf( "\nEngine::solve: sat assignment found\n" );
+                        _statistics.print();
                     }
-                    else
-                        continue;
+                    return true;
                 }
-                else
-                {
-                    // The linear portion of the problem has been solved.
-                    // Check the status of the PL constraints
-                    collectViolatedPlConstraints();
-
-                    // If all constraints are satisfied, we are possibly done
-                    if ( allPlConstraintsHold() || concretizeAndCheckInputAssignment() )
-                    {
-                        if ( _tableau->getBasicAssignmentStatus() !=
-                             ITableau::BASIC_ASSIGNMENT_JUST_COMPUTED )
-                        {
-                            if ( _verbosity > 0 )
-                            {
-                                printf( "Before declaring sat, recomputing...\n" );
-                            }
-                            // Make sure that the assignment is precise before declaring success
-                            _tableau->computeAssignment();
-                            continue;
-                        }
-                        if ( _verbosity > 0 )
-                        {
-                            printf( "\nEngine::solve: sat assignment found\n" );
-                            _statistics.print();
-                        }
-                        _exitCode = Engine::SAT;
-                        return true;
-                    }
-
-                    // We have violated piecewise-linear constraints.
-                    performConstraintFixingStep();
-
-                    // Finally, take this opporunity to tighten any bounds
-                    // and perform any valid case splits.
-                    tightenBoundsOnConstraintMatrix();
-                    applyAllBoundTightenings();
-                    // For debugging purposes
-                    checkBoundCompliancyWithDebugSolution();
-
-                    while ( applyAllValidConstraintCaseSplits() )
-                        performSymbolicBoundTightening();
-
-                    continue;
-                }
+                continue;
             }
 
             // We have out-of-bounds variables.
@@ -1945,7 +1825,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             _splittingStrategy =
                 ( _preprocessedQuery.getInputVariables().size() <
                   GlobalConfiguration::INTERVAL_SPLITTING_THRESHOLD ) ?
-                DivideStrategy::LargestInterval : DivideStrategy::ReLUViolation;
+                DivideStrategy::LargestInterval : DivideStrategy::SOI;
         }
 
         struct timespec end = TimeUtils::sampleMicro();
@@ -2184,9 +2064,6 @@ void Engine::restoreState( const EngineState &state )
     adjustWorkMemorySize();
     _activeEntryStrategy->resizeHook( _tableau );
     _costFunctionManager->initialize();
-
-    // Reset the violation counts in the SMT core
-    _smtCore.resetReportedViolations();
 }
 
 void Engine::setNumPlConstraintsDisabledByValidSplits( unsigned numConstraints )
@@ -2941,6 +2818,12 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolarity()
         return NULL;
 }
 
+PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnSOI()
+{
+    ENGINE_LOG( Stringf( "Using SOI-based heuristics..." ).ascii() );
+    return _costTracker.topUnfixed();
+}
+
 /*
 PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBABSR()
 {
@@ -3044,6 +2927,8 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraint()
     //    candidatePLConstraint = pickSplitPLConstraintBABSR();
     else if ( _splittingStrategy == DivideStrategy::EarliestReLU )
         candidatePLConstraint = pickSplitPLConstraintBasedOnTopology();
+    else if ( _splittingStrategy == DivideStrategy::SOI )
+        candidatePLConstraint = pickSplitPLConstraintBasedOnSOI();
     else if ( _splittingStrategy == DivideStrategy::LargestInterval )
     {
         // Conduct interval splitting periodically.
@@ -3051,7 +2936,7 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraint()
              GlobalConfiguration::INTERVAL_SPLITTING_FREQUENCY == 0 )
             candidatePLConstraint = pickSplitPLConstraintBasedOnIntervalWidth();
         else
-            candidatePLConstraint = pickSplitPLConstraintBasedOnTopology();
+            candidatePLConstraint = pickSplitPLConstraintBasedOnSOI();
     }
     ENGINE_LOG( Stringf( ( candidatePLConstraint ?
                            "Picked..." :
@@ -3267,4 +3152,16 @@ void Engine::extractSolutionFromGurobi( InputQuery &inputQuery )
             inputQuery.setSolutionValue( i, assignment[variableName] );
         }
     }
+}
+
+void Engine::updateScore( PiecewiseLinearConstraint *constraint,
+                          double previousCost, double currentCost )
+{
+    ASSERT( constraint != NULL );
+    double score = fabs( previousCost - currentCost );
+    ASSERT( score >= 0 );
+
+    ENGINE_LOG( Stringf( "new score is %f (metric: change)", score ).ascii() );
+
+    _costTracker.updateScore( constraint, score );
 }

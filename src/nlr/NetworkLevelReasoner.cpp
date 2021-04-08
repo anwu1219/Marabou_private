@@ -258,7 +258,7 @@ unsigned NetworkLevelReasoner::getNumberOfLayers() const
     return _layerIndexToLayer.size();
 }
 
-List<PiecewiseLinearConstraint *> NetworkLevelReasoner::getConstraintsInTopologicalOrder()
+List<PiecewiseLinearConstraint *> &NetworkLevelReasoner::getConstraintsInTopologicalOrder()
 {
     return _constraintsInTopologicalOrder;
 }

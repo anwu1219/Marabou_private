@@ -33,6 +33,7 @@ SmtCore::SmtCore( IEngine *engine )
     , _stateId( 0 )
     , _constraintViolationThreshold( Options::get()->getInt( Options::CONSTRAINT_VIOLATION_THRESHOLD ) )
     , _gurobi( NULL )
+    , _localSearch( Options::get()->getBool( Options::LOCAL_SEARCH ) )
     , _numberOfRandomFlips( 0 )
 {
 }
@@ -70,12 +71,15 @@ void SmtCore::reset()
 
 void SmtCore::reportRandomFlip()
 {
+    if ( _localSearch )
+        return;
     if ( _numberOfRandomFlips++ >= _constraintViolationThreshold )
     {
         _needToSplit = true;
         pickSplitPLConstraint();
     }
 }
+
 
 void SmtCore::reportViolatedConstraint( PiecewiseLinearConstraint *constraint )
 {
@@ -111,6 +115,8 @@ bool SmtCore::needToSplit() const
 void SmtCore::performSplit()
 {
     ASSERT( _needToSplit );
+
+    resetReportedViolations();
 
     // Maybe the constraint has already become inactive - if so, ignore
     if ( !_constraintForSplitting->isActive() )
@@ -185,6 +191,8 @@ bool SmtCore::popSplit()
 
     if ( _stack.empty() )
         return false;
+
+    resetReportedViolations();
 
     struct timespec start = TimeUtils::sampleMicro();
 

@@ -285,6 +285,8 @@ InputQuery &InputQuery::operator=( const InputQuery &other )
             auto *newPlc = constraint->duplicateConstraint();
             _plConstraints.append( newPlc );
             _networkLevelReasoner->addConstraintInTopologicalOrder( newPlc );
+            NLR::NeuronIndex index = other._networkLevelReasoner->getNeuronIndexFromPLConstraint( constraint );
+            _networkLevelReasoner->setPLConstraintNeuronIndex( newPlc, index );
         }
     }
 
@@ -827,7 +829,7 @@ bool InputQuery::constructReluLayer( NLR::NetworkLevelReasoner *nlr,
         newNeurons.append( NeuronInformation( f, newNeurons.size(), b ) );
         nlr->addConstraintInTopologicalOrder( plc );
         nlr->setPLConstraintNeuronIndex( plc, NLR::NeuronIndex
-                                         ( newLayerIndex, newNeurons.size() ) );
+                                         ( newLayerIndex, newNeurons.size() - 1 ) );
     }
 
     // No neurons found for the new layer
@@ -918,7 +920,7 @@ bool InputQuery::constructAbsoluteValueLayer( NLR::NetworkLevelReasoner *nlr,
         newNeurons.append( NeuronInformation( f, newNeurons.size(), b ) );
         nlr->addConstraintInTopologicalOrder( plc );
         nlr->setPLConstraintNeuronIndex( plc, NLR::NeuronIndex
-                                         ( newLayerIndex, newNeurons.size() ) );
+                                         ( newLayerIndex, newNeurons.size() - 1 ) );
     }
 
     // No neurons found for the new layer
@@ -1009,7 +1011,7 @@ bool InputQuery::constructSignLayer( NLR::NetworkLevelReasoner *nlr,
         newNeurons.append( NeuronInformation( f, newNeurons.size(), b ) );
         nlr->addConstraintInTopologicalOrder( plc );
         nlr->setPLConstraintNeuronIndex( plc, NLR::NeuronIndex
-                                         ( newLayerIndex, newNeurons.size() ) );
+                                         ( newLayerIndex, newNeurons.size() - 1 ) );
     }
 
     // No neurons found for the new layer
@@ -1111,7 +1113,7 @@ bool InputQuery::constructMaxLayer( NLR::NetworkLevelReasoner *nlr,
                                               max->getElements() ) );
         nlr->addConstraintInTopologicalOrder( plc );
         nlr->setPLConstraintNeuronIndex( plc, NLR::NeuronIndex
-                                         ( newLayerIndex, newNeurons.size() ) );
+                                         ( newLayerIndex, newNeurons.size() - 1 ) );
     }
 
     // No neurons found for the new layer

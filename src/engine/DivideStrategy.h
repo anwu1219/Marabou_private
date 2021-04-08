@@ -23,7 +23,7 @@ enum class DivideStrategy
     EarliestReLU,  // Pick a ReLU that appears in the earliest layer
     ReLUViolation, // Pick the ReLU that has been violated for the most times
     LargestInterval, // Pick the largest interval every K split steps, use ReLUViolation in other steps
-    BABSR,
+    SOI,
     Auto,
 };
 

@@ -18,6 +18,8 @@
 #include "MString.h"
 #include <cstdio>
 
+const double GlobalConfiguration::EXPONENTIAL_MOVING_AVERAGE_ALPHA = 0.5;
+
 // Use the polarity metrics to decide which branch to take first in a case split
 // and how to repair a ReLU constraint.
 const bool GlobalConfiguration::USE_POLARITY_BASED_DIRECTION_HEURISTICS = true;
@@ -44,7 +46,7 @@ const bool GlobalConfiguration::USE_COLUMN_MERGING_EQUATIONS = false;
 const double GlobalConfiguration::GAUSSIAN_ELIMINATION_PIVOT_SCALE_THRESHOLD = 0.1;
 const unsigned GlobalConfiguration::MAX_SIMPLEX_PIVOT_SEARCH_ITERATIONS = 5;
 const DivideStrategy GlobalConfiguration::SPLITTING_HEURISTICS = DivideStrategy::ReLUViolation;
-const unsigned GlobalConfiguration::INTERVAL_SPLITTING_FREQUENCY = 5;
+const unsigned GlobalConfiguration::INTERVAL_SPLITTING_FREQUENCY = 1;
 const unsigned GlobalConfiguration::INTERVAL_SPLITTING_THRESHOLD = 10;
 const unsigned GlobalConfiguration::BOUND_TIGHTING_ON_CONSTRAINT_MATRIX_FREQUENCY = 100;
 const unsigned GlobalConfiguration::ROW_BOUND_TIGHTENER_SATURATION_ITERATIONS = 20;
@@ -107,6 +109,7 @@ const bool GlobalConfiguration::NETWORK_LEVEL_REASONER_LOGGING = false;
 const bool GlobalConfiguration::MPS_PARSER_LOGGING= false;
 const bool GlobalConfiguration::PLCONSTRAINT_LOGGING= false;
 const bool GlobalConfiguration::LOCAL_SEARCH_LOGGING= false;
+const bool GlobalConfiguration::PSEUDO_COST_TRACKER_LOGGING= false;
 
 const bool GlobalConfiguration::USE_SMART_FIX = false;
 const bool GlobalConfiguration::USE_LEAST_FIX = false;

@@ -63,7 +63,7 @@ void Options::initializeDefaultValues()
     _intOptions[INITIAL_TIMEOUT] = 5;
     _intOptions[VERBOSITY] = 2;
     _intOptions[TIMEOUT] = 0;
-    _intOptions[CONSTRAINT_VIOLATION_THRESHOLD] = 20;
+    _intOptions[CONSTRAINT_VIOLATION_THRESHOLD] = 2;
 
     /*
       Float options
@@ -73,6 +73,7 @@ void Options::initializeDefaultValues()
     _floatOptions[PREPROCESSOR_BOUND_TOLERANCE] = \
         GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS;
     _floatOptions[NOISE_PARAMETER] = 0.0;
+    _floatOptions[PROBABILITY_DENSITY_PARAMETER] = 10;
 
     /*
       String options
@@ -148,12 +149,12 @@ DivideStrategy Options::getDivideStrategy() const
         return DivideStrategy::Polarity;
     if ( strategyString == "earliest-relu" )
         return DivideStrategy::EarliestReLU;
+    if ( strategyString == "soi" )
+        return DivideStrategy::SOI;
     if ( strategyString == "relu-violation" )
         return DivideStrategy::ReLUViolation;
     else if ( strategyString == "largest-interval" )
         return DivideStrategy::LargestInterval;
-    else if ( strategyString == "babsr" )
-        return DivideStrategy::BABSR;
     else
         return DivideStrategy::Auto;
 }
