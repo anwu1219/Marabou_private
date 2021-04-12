@@ -891,14 +891,13 @@ bool Engine::solve( unsigned timeoutInSeconds )
                 continue;
             }
 
-            /*
+
             if ( _tableau->basisMatrixAvailable() )
             {
                 explicitBasisBoundTightening();
                 applyAllBoundTightenings();
                 applyAllValidConstraintCaseSplits();
             }
-            */
 
             if ( splitJustPerformed )
             {
