@@ -49,11 +49,11 @@ def main():
                         takeNext = False
                         continue
                 elif arg in ["--work-dir", "-q", "--input-query", '--dataset', '-e',
-                             '--epsilon', '-t', '--index', '-i']:
+                             '--epsilon', '-t', '--index', '-i', '--offset', 'o']:
                         skipNext = True
                 elif arg[0] != '-':
                         continue
-                elif arg in ["--milp", "--tableau"]:
+                elif arg in ["--milp", "--tableau", "--local-search"]:
                         marabou_arg.append(arg)
                 else:
                         marabou_arg.append(arg)
@@ -67,7 +67,6 @@ def createQuery(args):
         query = Marabou.load_query(args.input_query)
         return query
     networkPath = args.network
-
     suffix = networkPath.split('.')[-1]
     if suffix == "nnet":
         network = Marabou.read_nnet(networkPath)
@@ -85,7 +84,7 @@ def createQuery(args):
             return query
 
     if args.dataset == 'mnist':
-        encode_mnist_linf(network, args.index, args.epsilon, args.target_label)
+        encode_mnist_linf(network, args.index, args.epsilon, args.target_label, args.offset)
         return network.getMarabouQuery()
     elif args.dataset == 'cifar10':
         encode_cifar10_linf(network, args.index, args.epsilon, args.target_label)
@@ -94,14 +93,14 @@ def createQuery(args):
         print("No property encoded! The dataset must be taxi or mnist or cifar10.")
         return network.getMarabouQuery()
 
-def encode_mnist_linf(network, index, epsilon, target_label):
+def encode_mnist_linf(network, index, epsilon, target_label, offset=0):
     from tensorflow.keras.datasets import mnist
     (X_train, Y_train), (X_test, Y_test) = mnist.load_data()
-    point = np.array(X_test[index]).flatten() / 255
+    point = np.array(X_test[index]).flatten() / 255 - offset
     print("correct label: {}".format(Y_test[index]))
     for x in np.array(network.inputVars).flatten():
-        network.setLowerBound(x, max(0, point[x] - epsilon))
-        network.setUpperBound(x, min(1, point[x] + epsilon))
+        network.setLowerBound(x, max(0-offset, point[x] - epsilon))
+        network.setUpperBound(x, min(1-offset, point[x] + epsilon))
     outputVars = network.outputVars.flatten()
     for i in range(10):
         if i != target_label:
@@ -182,6 +181,8 @@ def arguments():
                         help="the dataset (mnist,cifar10)")
     parser.add_argument('-e', '--epsilon', type=float, default=0,
                         help='The epsilon for L_infinity perturbation')
+    parser.add_argument('-o', '--offset', type=float, default=0,
+                        help='The offset')
     parser.add_argument('-t', '--target-label', type=int, default=0,
                         help='The target of the adversarial attack')
     parser.add_argument('-i,', '--index', type=int, default=0,
