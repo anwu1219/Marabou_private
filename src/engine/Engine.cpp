@@ -1234,6 +1234,15 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnSOI()
     return _costTracker.topUnfixed();
 }
 
+PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolaritySOI()
+{
+    ENGINE_LOG( Stringf( "Using SOI-Polarity-based heuristics..." ).ascii() );
+    if ( _smtCore.getStackDepth() < 3 )
+      return pickSplitPLConstraintBasedOnPolarity();
+    else
+      return _costTracker.topUnfixed();
+}
+
 PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolarity()
 {
     ENGINE_LOG( Stringf( "Using Polarity-based heuristics..." ).ascii() );
@@ -1339,6 +1348,9 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraint()
         candidatePLConstraint = pickSplitPLConstraintBasedOnPolarity();
     else if ( _splittingStrategy == DivideStrategy::SOI )
         candidatePLConstraint = pickSplitPLConstraintBasedOnSOI();
+    else if ( _splittingStrategy == DivideStrategy::SOIPolarity )
+        candidatePLConstraint = pickSplitPLConstraintBasedOnPolaritySOI();
+
     else if ( _splittingStrategy == DivideStrategy::LargestInterval )
     {
         // Conduct interval splitting periodically.
