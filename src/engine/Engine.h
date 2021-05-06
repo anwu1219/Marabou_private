@@ -361,6 +361,8 @@ private:
     void augmentInitialBasisIfNeeded( List<unsigned> &initialBasis, const List<unsigned> &basicRows );
     void performMILPSolverBoundedTightening();
 
+    PiecewiseLinearConstraint *pickSplitPLConstraintBasedOnPolaritySOI();
+    
     PiecewiseLinearConstraint *pickSplitPLConstraintBasedOnSOI();
 
     /*
