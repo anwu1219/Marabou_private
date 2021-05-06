@@ -156,6 +156,8 @@ DivideStrategy Options::getDivideStrategy() const
         return DivideStrategy::BABSR;
     else if ( strategyString == "soi" )
         return DivideStrategy::SOI;
+    else if ( strategyString == "sc-pol" )
+        return DivideStrategy::SOIPolarity;
     else
         return DivideStrategy::Auto;
 }

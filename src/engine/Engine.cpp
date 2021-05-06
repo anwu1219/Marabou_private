@@ -384,7 +384,8 @@ void Engine::performBoundTightening()
 {
     if ( _constructTableau )
     {
-        if ( _smtCore.getStackDepth() <= GlobalConfiguration::EXPLICIT_BOUND_TIGHTENING_DEPTH_THRESHOLD &&
+      if ( _smtCore.getStackDepth()
+	   <= GlobalConfiguration::EXPLICIT_BOUND_TIGHTENING_DEPTH_THRESHOLD &&
              _tableau->basisMatrixAvailable() )
         {
             explicitBasisBoundTightening();
@@ -1234,6 +1235,15 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnSOI()
     return _costTracker.topUnfixed();
 }
 
+PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolaritySOI()
+{
+    ENGINE_LOG( Stringf( "Using SOI-Polarity-based heuristics..." ).ascii() );
+    if ( _statistics.getUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES ) < 3 )
+      return pickSplitPLConstraintBasedOnPolarity();
+    else
+      return _costTracker.topUnfixed();
+}
+
 PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolarity()
 {
     ENGINE_LOG( Stringf( "Using Polarity-based heuristics..." ).ascii() );
@@ -1339,6 +1349,9 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraint()
         candidatePLConstraint = pickSplitPLConstraintBasedOnPolarity();
     else if ( _splittingStrategy == DivideStrategy::SOI )
         candidatePLConstraint = pickSplitPLConstraintBasedOnSOI();
+    else if ( _splittingStrategy == DivideStrategy::SOIPolarity )
+        candidatePLConstraint = pickSplitPLConstraintBasedOnPolaritySOI();
+
     else if ( _splittingStrategy == DivideStrategy::LargestInterval )
     {
         // Conduct interval splitting periodically.
@@ -1493,7 +1506,13 @@ void Engine::updateScore( PiecewiseLinearConstraint *constraint,
 
     ASSERT( constraint != NULL );
     double score = 0;
-    if ( _scoreMetric == "reduction" )
+    if ( _scoreMetric == "increase" )
+    {
+        score = currentCost - previousCost;
+	if ( score < 0 )
+	  score = 0;
+    }
+    else if ( _scoreMetric == "reduction" )
     {
         score = previousCost - currentCost;
     }
