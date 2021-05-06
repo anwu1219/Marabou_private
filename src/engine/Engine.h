@@ -25,6 +25,7 @@
 #include "HeuristicCostManager.h"
 #include "SnCDivideStrategy.h"
 #include "GlobalConfiguration.h"
+#include "GLPKWrapper.h"
 #include "GurobiWrapper.h"
 #include "IEngine.h"
 #include "InputQuery.h"
@@ -428,6 +429,9 @@ private:
     String _scoreMetric;
 
     bool _constructTableau;
+
+    // Otherwise, use GLPK
+    bool _useGurobi;
 
     void performBoundTightening();
 

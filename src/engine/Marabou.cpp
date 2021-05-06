@@ -140,10 +140,12 @@ void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
     {
         resultString = "sat";
 
-        printf( "Input assignment:\n" );
-        for ( unsigned i = 0; i < _inputQuery.getNumInputVariables(); ++i )
-            printf( "x%u = %lf\n", i, _inputQuery.getSolutionValue( _inputQuery.inputVariableByIndex( i ) ) );
-
+        if ( Options::get()->getInt( Options::VERBOSITY ) > 1 )
+        {
+            printf( "Input assignment:\n" );
+            for ( unsigned i = 0; i < _inputQuery.getNumInputVariables(); ++i )
+                printf( "x%u = %lf\n", i, _inputQuery.getSolutionValue( _inputQuery.inputVariableByIndex( i ) ) );
+        }
         if ( _inputQuery._networkLevelReasoner )
         {
             double *input = new double[_inputQuery.getNumInputVariables()];

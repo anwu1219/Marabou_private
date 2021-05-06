@@ -49,6 +49,7 @@ void Options::initializeDefaultValues()
     _boolOptions[DUMP_BOUNDS] = false;
     _boolOptions[SOLVE_WITH_MILP] = false;
     _boolOptions[LOCAL_SEARCH] = false;
+    _boolOptions[USE_GUROBI] = false;
 
     /*
       Int options
