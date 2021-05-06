@@ -384,7 +384,8 @@ void Engine::performBoundTightening()
 {
     if ( _constructTableau )
     {
-        if ( _smtCore.getStackDepth() <= GlobalConfiguration::EXPLICIT_BOUND_TIGHTENING_DEPTH_THRESHOLD &&
+      if ( _smtCore.getStackDepth()
+	   <= GlobalConfiguration::EXPLICIT_BOUND_TIGHTENING_DEPTH_THRESHOLD &&
              _tableau->basisMatrixAvailable() )
         {
             explicitBasisBoundTightening();
@@ -1505,7 +1506,13 @@ void Engine::updateScore( PiecewiseLinearConstraint *constraint,
 
     ASSERT( constraint != NULL );
     double score = 0;
-    if ( _scoreMetric == "reduction" )
+    if ( _scoreMetric == "increase" )
+    {
+        score = currentCost - previousCost;
+	if ( score < 0 )
+	  score = 0;
+    }
+    else if ( _scoreMetric == "reduction" )
     {
         score = previousCost - currentCost;
     }
