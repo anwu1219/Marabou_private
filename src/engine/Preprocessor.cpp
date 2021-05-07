@@ -92,7 +92,7 @@ InputQuery Preprocessor::preprocess( const InputQuery &query, bool attemptVariab
 
       Then, eliminate fixed variables.
     */
-
+    std::cout << "start Tightening" << std::endl;
     bool continueTightening = true;
     while ( continueTightening )
     {
@@ -100,6 +100,7 @@ InputQuery Preprocessor::preprocess( const InputQuery &query, bool attemptVariab
         continueTightening = processConstraints() || continueTightening;
         if ( attemptVariableElimination )
             continueTightening = processIdenticalVariables() || continueTightening;
+        std::cout << "Tightening" << std::endl;
     }
 
     collectFixedValues();
