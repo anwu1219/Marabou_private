@@ -149,6 +149,8 @@ bool SmtCore::popSplit()
         return false;
     }
 
+    resetReportedViolations();
+
     if ( _statistics )
     {
         _statistics->incUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES, 1 );
