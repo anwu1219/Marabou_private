@@ -429,6 +429,10 @@ private:
 
     bool _constructTableau;
 
+    unsigned _constraintViolationThreshold;
+
+    String _flippingStrategy;
+
     void performBoundTightening();
 
     void solveLPWithGurobi( List<LPSolver::Term> &cost );

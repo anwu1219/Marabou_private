@@ -101,7 +101,7 @@ PiecewiseLinearConstraint *HeuristicCostManager::updateHeuristicCost()
     PiecewiseLinearConstraint *lastFlippedConstraint = NULL;
     if ( _flippingStrategy == "gwsat" )
         lastFlippedConstraint = updateHeuristicCostGWSAT();
-    else if ( _flippingStrategy == "gwsat2" )
+    else if ( _flippingStrategy == "walksat" )
         lastFlippedConstraint = updateHeuristicCostGWSAT2();
     else if ( _flippingStrategy == "random" )
         lastFlippedConstraint = updateHeuristicCostRandomly();

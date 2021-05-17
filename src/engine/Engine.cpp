@@ -53,6 +53,8 @@ Engine::Engine()
     , _costFunctionInitialized( false )
     , _scoreMetric( Options::get()->getString( Options::SCORE_METRIC ) )
     , _constructTableau( Options::get()->getBool( Options::CONSTRUCT_TABLEAU ) )
+    , _constraintViolationThreshold( Options::get()->getInt( Options::CONSTRAINT_VIOLATION_THRESHOLD ) )
+    , _flippingStrategy( Options::get()->getString( Options::FLIPPING_STRATEGY ) )
 {
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
@@ -86,6 +88,12 @@ bool Engine::performLocalSearch()
 {
     ENGINE_LOG( "Performing local search..." );
 
+    if ( _constraintViolationThreshold == 0 )
+    {
+      _smtCore.reportRandomFlip();
+      return false;
+    }
+    
     // All the linear constraints have been satisfied at this point.
     // Update the cost function
     _heuristicCostManager.initiateCostFunctionForLocalSearch();
@@ -122,19 +130,31 @@ bool Engine::performLocalSearch()
 
         updateScore( lastFlippedConstraint, previousCost, currentCost );
 
-        if ( !_heuristicCostManager.acceptProposedUpdate( previousCost, currentCost ) )
+        if ( _flippingStrategy == "walksat" )
         {
-            _smtCore.reportRandomFlip();
-            _heuristicCostManager.undoLastHeuristicCostUpdate();
-            lastCostAccepted = false;
-            _statistics.incLongAttr( Statistics::NUM_REJECTED_FLIPS, 1 );
-        }
-        else
-        {
+            if ( currentCost > previousCost )
+                _smtCore.reportRandomFlip();
             previousCost = currentCost;
             lastCostAccepted = true;
             _statistics.incLongAttr( Statistics::NUM_ACCEPTED_FLIPS, 1 );
             _statistics.setDoubleAttr( Statistics::HEURISTIC_COST, currentCost );
+        }
+        else
+        {
+            if ( !_heuristicCostManager.acceptProposedUpdate( previousCost, currentCost ) )
+            {
+                _smtCore.reportRandomFlip();
+                _heuristicCostManager.undoLastHeuristicCostUpdate();
+                lastCostAccepted = false;
+                _statistics.incLongAttr( Statistics::NUM_REJECTED_FLIPS, 1 );
+            }
+            else
+            {
+                previousCost = currentCost;
+                lastCostAccepted = true;
+                _statistics.incLongAttr( Statistics::NUM_ACCEPTED_FLIPS, 1 );
+                _statistics.setDoubleAttr( Statistics::HEURISTIC_COST, currentCost );
+            }
         }
     }
     ENGINE_LOG( "Performing local search - done" );
@@ -1239,7 +1259,9 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolaritySOI()
 {
     ENGINE_LOG( Stringf( "Using SOI-Polarity-based heuristics..." ).ascii() );
     if ( _smtCore.getStackDepth() < 3 )
+    {
       return pickSplitPLConstraintBasedOnPolarity();
+    }
     else
       return _costTracker.topUnfixed();
 }
@@ -1248,6 +1270,10 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolarity()
 {
     ENGINE_LOG( Stringf( "Using Polarity-based heuristics..." ).ascii() );
 
+    if ( _preprocessedQuery.getInputVariables().size() <
+	 GlobalConfiguration::INTERVAL_SPLITTING_THRESHOLD )
+      return pickSplitPLConstraintBasedOnIntervalWidth();
+    
     if ( !_networkLevelReasoner )
         throw MarabouError( MarabouError::NETWORK_LEVEL_REASONER_NOT_AVAILABLE );
 
