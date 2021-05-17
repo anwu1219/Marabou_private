@@ -25,6 +25,7 @@ enum class DivideStrategy
     LargestInterval, // Pick the largest interval every K split steps, use ReLUViolation in other steps
     BABSR,
     SOI,
+    SOIPolarity,
     Auto,
 };
 

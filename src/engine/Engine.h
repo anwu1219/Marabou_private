@@ -361,6 +361,8 @@ private:
     void augmentInitialBasisIfNeeded( List<unsigned> &initialBasis, const List<unsigned> &basicRows );
     void performMILPSolverBoundedTightening();
 
+    PiecewiseLinearConstraint *pickSplitPLConstraintBasedOnPolaritySOI();
+    
     PiecewiseLinearConstraint *pickSplitPLConstraintBasedOnSOI();
 
     /*
@@ -427,6 +429,8 @@ private:
 
     bool _constructTableau;
 
+    unsigned _constraintViolationThreshold;
+    
     void performBoundTightening();
 
     void solveLPWithGurobi( List<LPSolver::Term> &cost );
