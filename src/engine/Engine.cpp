@@ -868,10 +868,11 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
         if ( _splittingStrategy == DivideStrategy::Auto )
         {
-            _splittingStrategy =
-                ( _preprocessedQuery.getInputVariables().size() <
-                  GlobalConfiguration::INTERVAL_SPLITTING_THRESHOLD ) ?
-                DivideStrategy::LargestInterval : DivideStrategy::SOI;
+            std::cout << "Input splitting!" << std::endl;
+            _splittingStrategy = DivideStrategy::LargestInterval;
+            //( _preprocessedQuery.getInputVariables().size() <
+            //      GlobalConfiguration::INTERVAL_SPLITTING_THRESHOLD ) ?
+            //    DivideStrategy::LargestInterval : DivideStrategy::SOI;
         }
 
         struct timespec end = TimeUtils::sampleMicro();
