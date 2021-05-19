@@ -78,6 +78,7 @@ void Marabou::prepareInputQuery()
     }
     else
     {
+        _inputQuery = new InputQuery();
         /*
           Step 1: extract the network
         */
