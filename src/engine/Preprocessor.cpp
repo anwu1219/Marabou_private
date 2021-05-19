@@ -42,12 +42,12 @@ InputQuery Preprocessor::preprocess( const InputQuery &query, bool attemptVariab
       Next, make sure all equations are of type EQUALITY. If not, turn them
       into one.
     */
-    makeAllEquationsEqualities();
+    //makeAllEquationsEqualities();
 
     /*
       Attempt to construct a network level reasoner
     */
-    _preprocessed.constructNetworkLevelReasoner();
+    //_preprocessed.constructNetworkLevelReasoner();
 
     /*
       Merge consecutive WS layers

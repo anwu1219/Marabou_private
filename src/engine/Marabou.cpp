@@ -30,7 +30,8 @@
 #endif
 
 Marabou::Marabou()
-    : _acasParser( NULL )
+    : _inputQuery( NULL )
+    , _acasParser( NULL )
     , _engine()
 {
 }
@@ -72,8 +73,8 @@ void Marabou::prepareInputQuery()
         }
 
         printf( "InputQuery: %s\n", inputQueryFilePath.ascii() );
+        std::cout << "loading query" << std::endl;
         _inputQuery = QueryLoader::loadQuery( inputQueryFilePath );
-        _inputQuery.constructNetworkLevelReasoner();
     }
     else
     {
@@ -90,8 +91,8 @@ void Marabou::prepareInputQuery()
 
         // For now, assume the network is given in ACAS format
         _acasParser = new AcasParser( networkFilePath );
-        _acasParser->generateQuery( _inputQuery );
-        _inputQuery.constructNetworkLevelReasoner();
+        _acasParser->generateQuery( *_inputQuery );
+        _inputQuery->constructNetworkLevelReasoner();
 
         /*
           Step 2: extract the property in question
@@ -100,7 +101,7 @@ void Marabou::prepareInputQuery()
         if ( propertyFilePath != "" )
         {
             printf( "Property: %s\n", propertyFilePath.ascii() );
-            PropertyParser().parse( propertyFilePath, _inputQuery );
+            PropertyParser().parse( propertyFilePath, *_inputQuery );
         }
         else
             printf( "Property: None\n" );
@@ -111,7 +112,7 @@ void Marabou::prepareInputQuery()
     String queryDumpFilePath = Options::get()->getString( Options::QUERY_DUMP_FILE );
     if ( queryDumpFilePath.length() > 0 )
     {
-        _inputQuery.saveQuery( queryDumpFilePath );
+        _inputQuery->saveQuery( queryDumpFilePath );
         printf( "\nInput query successfully dumped to file\n" );
         exit( 0 );
     }
@@ -119,11 +120,11 @@ void Marabou::prepareInputQuery()
 
 void Marabou::solveQuery()
 {
-    if ( _engine.processInputQuery( _inputQuery ) )
+    if ( _engine.processInputQuery( *_inputQuery ) )
         _engine.solve( Options::get()->getInt( Options::TIMEOUT ) );
 
-    if ( _engine.getExitCode() == Engine::SAT )
-        _engine.extractSolution( _inputQuery );
+    //if ( _engine.getExitCode() == Engine::SAT )
+    //    _engine.extractSolution( *_inputQuery );
 }
 
 void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
@@ -139,18 +140,18 @@ void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
     else if ( result == Engine::SAT )
     {
         resultString = "sat";
-
+        /*
         printf( "Input assignment:\n" );
-        for ( unsigned i = 0; i < _inputQuery.getNumInputVariables(); ++i )
-            printf( "x%u = %lf\n", i, _inputQuery.getSolutionValue( _inputQuery.inputVariableByIndex( i ) ) );
+        for ( unsigned i = 0; i < _inputQuery->getNumInputVariables(); ++i )
+            printf( "x%u = %lf\n", i, _inputQuery->getSolutionValue( _inputQuery->inputVariableByIndex( i ) ) );
 
-        if ( _inputQuery._networkLevelReasoner )
+        if ( _inputQuery->_networkLevelReasoner )
         {
-            double *input = new double[_inputQuery.getNumInputVariables()];
-            for ( unsigned i = 0; i < _inputQuery.getNumInputVariables(); ++i )
-                input[i] = _inputQuery.getSolutionValue( _inputQuery.inputVariableByIndex( i ) );
+            double *input = new double[_inputQuery->getNumInputVariables()];
+            for ( unsigned i = 0; i < _inputQuery->getNumInputVariables(); ++i )
+                input[i] = _inputQuery->getSolutionValue( _inputQuery->inputVariableByIndex( i ) );
 
-            NLR::NetworkLevelReasoner *nlr = _inputQuery._networkLevelReasoner;
+            NLR::NetworkLevelReasoner *nlr = _inputQuery->_networkLevelReasoner;
             NLR::Layer *lastLayer = nlr->getLayer( nlr->getNumberOfLayers() - 1 );
             double *output = new double[lastLayer->getSize()];
 
@@ -179,18 +180,18 @@ void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
             delete[] output;
 
             if ( sat )
-                printf( "sat\n" );
-            else
-                printf( "wrongModel\n" );
+
         }
         else
         {
             printf( "\n" );
             printf( "Output:\n" );
-            for ( unsigned i = 0; i < _inputQuery.getNumOutputVariables(); ++i )
-                printf( "y%u = %lf\n", i, _inputQuery.getSolutionValue( _inputQuery.outputVariableByIndex( i ) ) );
+            for ( unsigned i = 0; i < _inputQuery->getNumOutputVariables(); ++i )
+                printf( "y%u = %lf\n", i, _inputQuery->getSolutionValue( _inputQuery->outputVariableByIndex( i ) ) );
             printf( "\n" );
         }
+        */
+        printf( "sat\n" );
     }
     else if ( result == Engine::TIMEOUT )
     {
@@ -238,11 +239,13 @@ void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
                                     _engine.getStatistics()->getLongAttr( Statistics::NUM_REJECTED_FLIPS ) ) );
 
         summaryFile.write( "\n" );
-        if ( resultString == "sat" )
+        /*
+          if ( resultString == "sat" )
         {
             for ( unsigned i = 0; i < 196; ++i )
-                summaryFile.write( Stringf( "x%u = %lf\n", i, _inputQuery.getSolutionValue( i ) ) );
+                summaryFile.write( Stringf( "x%u = %lf\n", i, _inputQuery->getSolutionValue( i ) ) );
         }
+        */
     }
 }
 

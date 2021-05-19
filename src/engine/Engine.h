@@ -461,6 +461,7 @@ private:
     void updateScore( PiecewiseLinearConstraint *constraint,
                       double previousCost, double currentCost );
 
+    bool samplePoints();
 };
 
 #endif // __Engine_h__

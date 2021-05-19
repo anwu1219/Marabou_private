@@ -32,7 +32,7 @@ public:
     void run();
 
 private:
-    InputQuery _inputQuery;
+    InputQuery *_inputQuery;
 
     /*
       Extract the options and input files (network and property), and

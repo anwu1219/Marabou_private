@@ -26,14 +26,14 @@
 #include "ReluConstraint.h"
 #include "SignConstraint.h"
 
-InputQuery QueryLoader::loadQuery( const String &fileName )
+InputQuery *QueryLoader::loadQuery( const String &fileName )
 {
     if ( !IFile::exists( fileName ) )
     {
         throw MarabouError( MarabouError::FILE_DOES_NOT_EXIST, Stringf( "File %s not found.\n", fileName.ascii() ).ascii() );
     }
 
-    InputQuery inputQuery;
+    InputQuery *inputQuery = new InputQuery();
     AutoFile input( fileName );
     input->open( IFile::MODE_READ );
 
@@ -49,7 +49,7 @@ InputQuery QueryLoader::loadQuery( const String &fileName )
     QL_LOG( Stringf( "Number of equations: %u\n", numEquations ).ascii() );
     QL_LOG( Stringf( "Number of constraints: %u\n", numConstraints ).ascii() );
 
-    inputQuery.setNumberOfVariables( numVars );
+    inputQuery->setNumberOfVariables( numVars );
 
     // Input Variables
     unsigned numInputVars = atoi( input->readLine().trim().ascii() );
@@ -62,7 +62,7 @@ InputQuery QueryLoader::loadQuery( const String &fileName )
         it++;
         unsigned variable = atoi( it->ascii() );
         it++;
-        inputQuery.markInputVariable( variable, inputIndex );
+        inputQuery->markInputVariable( variable, inputIndex );
     }
 
     // Output Variables
@@ -76,7 +76,7 @@ InputQuery QueryLoader::loadQuery( const String &fileName )
         it++;
         unsigned variable = atoi( it->ascii() );
         it++;
-        inputQuery.markOutputVariable( variable, outputIndex );
+        inputQuery->markOutputVariable( variable, outputIndex );
     }
 
     // Lower Bounds
@@ -97,7 +97,7 @@ InputQuery QueryLoader::loadQuery( const String &fileName )
         ++it;
 
         QL_LOG( Stringf( "Var: %u, L: %f\n", varToBound, lb ).ascii() );
-        inputQuery.setLowerBound( varToBound, lb );
+        inputQuery->setLowerBound( varToBound, lb );
     }
 
     // Upper Bounds
@@ -118,7 +118,7 @@ InputQuery QueryLoader::loadQuery( const String &fileName )
         ++it;
 
         QL_LOG( Stringf( "Var: %u, U: %f\n", varToBound, ub ).ascii() );
-        inputQuery.setUpperBound( varToBound, ub );
+        inputQuery->setUpperBound( varToBound, ub );
     }
 
     // Equations
@@ -177,7 +177,7 @@ InputQuery QueryLoader::loadQuery( const String &fileName )
             equation.addAddend( coeff, varNo );
         }
 
-        inputQuery.addEquation( equation );
+        inputQuery->addEquation( equation );
     }
 
     // Constraints
@@ -224,10 +224,10 @@ InputQuery QueryLoader::loadQuery( const String &fileName )
         }
 
         ASSERT( constraint );
-        inputQuery.addPiecewiseLinearConstraint( constraint );
+        inputQuery->addPiecewiseLinearConstraint( constraint );
     }
 
-    inputQuery.constructNetworkLevelReasoner();
+    inputQuery->constructNetworkLevelReasoner();
     return inputQuery;
 }
 

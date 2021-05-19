@@ -14,7 +14,6 @@ macro(network_level_reasoner_add_unit_test name)
     marabou_add_test(${NETWORK_LEVEL_REASONER_TESTS_DIR}/Test_${name} network_level_reasoner USE_MOCK_COMMON USE_MOCK_ENGINE "unit")
 endmacro()
 
-network_level_reasoner_add_unit_test(WsLayerElimination)
 network_level_reasoner_add_unit_test(ParallelSolver)
 
 if (${BUILD_PYTHON})

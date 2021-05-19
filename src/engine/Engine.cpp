@@ -279,10 +279,20 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
                     _statistics.print();
             if ( splitJustPerformed )
             {
+                if ( samplePoints() )
+                {
+                    if ( _verbosity > 0 )
+                        {
+                            printf( "\nEngine::solve: sat assignment found\n" );
+                            _statistics.print();
+                        }
+                    _exitCode = Engine::SAT;
+                    return true;
+                }
+
                 performBoundTightening();
                 splitJustPerformed = false;
                 informLPSolverOfBounds();
-
                 DEBUG({ checkBoundConsistency(); });
             }
 
@@ -353,6 +363,76 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
     }
 }
 
+bool Engine::samplePoints()
+{
+    int maxOutput = Options::get()->getInt( Options::MAX_OUTPUT );
+    unsigned outputIndex = 0;
+    if ( maxOutput == -1 )
+        return false;
+    else
+        outputIndex = (unsigned) maxOutput;
+
+    unsigned NUM_SAMPLES = 1000;
+    std::mt19937 mt( 1 );
+
+    unsigned numInputVariables = _preprocessedQuery.getNumInputVariables();
+    unsigned numOutputVariables = _preprocessedQuery.getNumOutputVariables();
+
+    double *inputAssignment = new double[numInputVariables];
+    double *outputAssignment = new double[numOutputVariables];
+
+    for ( unsigned sample = 0; sample < NUM_SAMPLES; ++sample )
+    {
+        std::cout << "Sample: " << sample << std::endl;
+        for ( unsigned i = 0; i < numInputVariables; ++i )
+        {
+            double lb = _boundManager.getLowerBound( _preprocessedQuery.inputVariableByIndex( i ) );
+            double ub = _boundManager.getUpperBound( _preprocessedQuery.inputVariableByIndex( i ) );
+            if ( FloatUtils::areEqual( lb, ub ) )
+                inputAssignment[i] = lb;
+            else
+            {
+                std::uniform_real_distribution<double> distribution( lb, ub );
+                inputAssignment[i] = distribution( mt );
+            }
+        }
+        _networkLevelReasoner->evaluate( inputAssignment, outputAssignment );
+        DEBUG({
+        std::cout << outputIndex << std::endl;
+        for ( unsigned o = 0; o < numOutputVariables; ++o )
+        {
+            std::cout << "y" << o << " = " << outputAssignment[o] << std::endl;
+        }});
+
+        double targetOutput = outputAssignment[outputIndex];
+        bool outputMax = true;
+        for ( unsigned o = 0; o < numOutputVariables; ++o )
+        {
+            if ( outputAssignment[o] > targetOutput )
+            {
+                outputMax = false;
+                break;
+            }
+        }
+        if (outputMax)
+        {
+            std::cout << "Found adversarial example by sampling!" << std::endl;
+            for ( unsigned o = 0; o < numOutputVariables; ++o )
+            {
+                std::cout << "y" << o << " = " << outputAssignment[o] << std::endl;
+            }
+            delete[] outputAssignment;
+            delete[] inputAssignment;
+            return true;
+        }
+    }
+    std::cout << "Sampling failed!" << std::endl;
+    delete[] outputAssignment;
+    delete[] inputAssignment;
+    return false;
+}
+
+
 bool Engine::solve( unsigned timeoutInSeconds )
 {
     SignalHandler::getInstance()->initialize();
@@ -397,11 +477,8 @@ void Engine::performBoundTightening()
         applyAllValidConstraintCaseSplits();
     }
 
-    do
-    {
-        performSymbolicBoundTightening();
-    }
-    while ( applyAllValidConstraintCaseSplits() );
+    performSymbolicBoundTightening();
+    applyAllValidConstraintCaseSplits();
 }
 
 bool Engine::processInputQuery( InputQuery &inputQuery )
@@ -443,7 +520,7 @@ void Engine::invokePreprocessor( const InputQuery &inputQuery, bool preprocess )
                 "%u equations, %u variables\n\n",
                 _preprocessedQuery.getEquations().size(),
                 _preprocessedQuery.getNumberOfVariables() );
-
+    /*
     unsigned infiniteBounds = _preprocessedQuery.countInfiniteBounds();
     if ( infiniteBounds != 0 )
     {
@@ -451,6 +528,7 @@ void Engine::invokePreprocessor( const InputQuery &inputQuery, bool preprocess )
         throw MarabouError( MarabouError::UNBOUNDED_VARIABLES_NOT_YET_SUPPORTED,
                              Stringf( "Error! Have %u infinite bounds", infiniteBounds ).ascii() );
     }
+    */
 }
 
 void Engine::printInputBounds( const InputQuery &inputQuery ) const
@@ -859,8 +937,8 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
         if ( preprocess )
         {
-            performSymbolicBoundTightening();
-            performMILPSolverBoundedTightening();
+            //performSymbolicBoundTightening();
+            //performMILPSolverBoundedTightening();
         }
 
         if ( Options::get()->getBool( Options::DUMP_BOUNDS ) )
@@ -868,13 +946,12 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
         if ( _splittingStrategy == DivideStrategy::Auto )
         {
-            std::cout << "Input splitting!" << std::endl;
             _splittingStrategy = DivideStrategy::LargestInterval;
             //( _preprocessedQuery.getInputVariables().size() <
             //      GlobalConfiguration::INTERVAL_SPLITTING_THRESHOLD ) ?
             //    DivideStrategy::LargestInterval : DivideStrategy::SOI;
         }
-
+        std::cout << "preprocessing done! " << std::endl;
         struct timespec end = TimeUtils::sampleMicro();
         _statistics.setLongAttr( Statistics::TIME_PREPROCESSING_MICRO,
                                  TimeUtils::timePassed( start, end ) );
@@ -970,7 +1047,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
     ENGINE_LOG( "Applying a split. " );
 
     const List<Tightening> &bounds = split.getBoundTightenings();
-    ASSERT( split.getEquations().size() == 0 );
+    //ASSERT( split.getEquations().size() == 0 );
 
     for ( auto &bound : bounds )
     {
@@ -1437,6 +1514,7 @@ bool Engine::solveWithMILPEncoding( unsigned timeoutInSeconds )
 
 void Engine::extractSolutionFromGurobi( InputQuery &inputQuery )
 {
+    return;
     ASSERT( _gurobi != nullptr );
     Map<String, double> assignment;
     double costOrObjective;

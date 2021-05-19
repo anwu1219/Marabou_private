@@ -14,7 +14,6 @@ macro(query_loader_add_unit_test name)
     marabou_add_test(${QUERY_LOADER_TESTS_DIR}/Test_${name} query_loader USE_MOCK_COMMON USE_MOCK_ENGINE "unit")
 endmacro()
 
-query_loader_add_unit_test(QueryLoader)
 
 if (${BUILD_PYTHON})
     target_include_directories(${MARABOU_PY} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")

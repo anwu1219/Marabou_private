@@ -355,7 +355,7 @@ void saveQuery(InputQuery& inputQuery, std::string filename){
 }
 
 InputQuery loadQuery(std::string filename){
-    return QueryLoader::loadQuery(String(filename));
+    return *QueryLoader::loadQuery(String(filename));
 }
 
 // Code necessary to generate Python library
