@@ -1514,7 +1514,6 @@ bool Engine::solveWithMILPEncoding( unsigned timeoutInSeconds )
 
 void Engine::extractSolutionFromGurobi( InputQuery &inputQuery )
 {
-    return;
     ASSERT( _gurobi != nullptr );
     Map<String, double> assignment;
     double costOrObjective;

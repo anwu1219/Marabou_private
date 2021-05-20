@@ -131,8 +131,8 @@ void Marabou::solveQuery()
     if ( _engine.processInputQuery( *_inputQuery ) )
         _engine.solve( Options::get()->getInt( Options::TIMEOUT ) );
 
-    //if ( _engine.getExitCode() == Engine::SAT )
-    //    _engine.extractSolution( *_inputQuery );
+    if ( _engine.getExitCode() == Engine::SAT )
+        _engine.extractSolution( *_inputQuery );
 }
 
 void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
@@ -148,7 +148,6 @@ void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
     else if ( result == Engine::SAT )
     {
         resultString = "sat";
-        /*
         printf( "Input assignment:\n" );
         for ( unsigned i = 0; i < _inputQuery->getNumInputVariables(); ++i )
             printf( "x%u = %lf\n", i, _inputQuery->getSolutionValue( _inputQuery->inputVariableByIndex( i ) ) );
@@ -188,7 +187,7 @@ void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
             delete[] output;
 
             if ( sat )
-
+                printf( "sat\n" );
         }
         else
         {
@@ -198,7 +197,6 @@ void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
                 printf( "y%u = %lf\n", i, _inputQuery->getSolutionValue( _inputQuery->outputVariableByIndex( i ) ) );
             printf( "\n" );
         }
-        */
         printf( "sat\n" );
     }
     else if ( result == Engine::TIMEOUT )
