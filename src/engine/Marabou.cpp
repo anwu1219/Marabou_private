@@ -47,8 +47,15 @@ Marabou::~Marabou()
 
 void Marabou::run()
 {
-    struct timespec start = TimeUtils::sampleMicro();
+    String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );    
+    if ( File::exists( summaryFilePath ) )
+    {
+	std::cout << "File exists!" << std::endl;
+	return;
+    }
 
+    struct timespec start = TimeUtils::sampleMicro();
+	
     prepareInputQuery();
     solveQuery();
 
