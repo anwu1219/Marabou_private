@@ -79,6 +79,8 @@ public:
         MAX_OUTPUT,
 
         CORRECT_OUTPUT,
+
+        VAR,
     };
 
     enum FloatOptions{
@@ -96,6 +98,9 @@ public:
 
         // Controls MCMC behavior
         PROBABILITY_DENSITY_PARAMETER,
+
+        LB,
+        UB,
     };
 
     enum StringOptions {

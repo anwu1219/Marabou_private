@@ -62,6 +62,7 @@ void Options::initializeDefaultValues()
     _intOptions[CONSTRAINT_VIOLATION_THRESHOLD] = 2;
     _intOptions[MAX_OUTPUT] = -1;
     _intOptions[CORRECT_OUTPUT] = -1;
+    _intOptions[VAR] = -1;
 
     /*
       Float options
@@ -72,6 +73,8 @@ void Options::initializeDefaultValues()
         GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS;
     _floatOptions[NOISE_PARAMETER] = 0.0;
     _floatOptions[PROBABILITY_DENSITY_PARAMETER] = 10;
+    _floatOptions[LB] = 0;
+    _floatOptions[UB] = 0;
 
     /*
       String options

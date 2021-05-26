@@ -141,12 +141,18 @@ void Marabou::solveQuery()
     }
     else
     {
+        double lb = Options::get()->getFloat( Options::LB );
+        double ub = Options::get()->getFloat( Options::UB );
+        unsigned var = Options::get()->getInt( Options::VAR );
+
         for ( int target = 0; target < 10; ++target)
         {
             if ( target == correct )
                 continue;
             _engine = std::unique_ptr<Engine>( new Engine());
             InputQuery tmpInputQuery = *_inputQuery;
+            tmpInputQuery.setLowerBound( var, lb);
+            tmpInputQuery.setLowerBound( var, ub);
             for ( unsigned other= 0; other < 10; ++other )
             {
                 Equation eq(Equation::GE);

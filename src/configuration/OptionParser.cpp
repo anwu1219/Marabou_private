@@ -124,6 +124,15 @@ void OptionParser::initialize()
         ( "timeout-factor",
           boost::program_options::value<float>( &((*_floatOptions)[Options::TIMEOUT_FACTOR]) ),
           "(SnC) The timeout factor" )
+        ( "lb",
+          boost::program_options::value<float>( &((*_floatOptions)[Options::LB]) ),
+          "lb" )
+        ( "ub",
+          boost::program_options::value<float>( &((*_floatOptions)[Options::UB]) ),
+          "ub" )
+        ( "var",
+          boost::program_options::value<int>( &((*_intOptions)[Options::VAR]) ),
+          "var" )
         ( "help",
           boost::program_options::bool_switch( &((*_boolOptions)[Options::HELP]) ),
           "Prints the help message")
