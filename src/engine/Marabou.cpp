@@ -15,6 +15,7 @@
  **/
 
 #include "AcasParser.h"
+#include "Equation.h"
 #include "GlobalConfiguration.h"
 #include "File.h"
 #include "FloatUtils.h"
@@ -32,7 +33,7 @@
 Marabou::Marabou()
     : _inputQuery( NULL )
     , _acasParser( NULL )
-    , _engine()
+    , _engine( std::unique_ptr<Engine>(new Engine()) )
 {
 }
 
@@ -128,16 +129,48 @@ void Marabou::prepareInputQuery()
 
 void Marabou::solveQuery()
 {
-    if ( _engine.processInputQuery( *_inputQuery ) )
-        _engine.solve( Options::get()->getInt( Options::TIMEOUT ) );
+    int correct = Options::get()->getInt( Options::CORRECT_OUTPUT );
+    if ( correct == -1)
+    {
+        if ( _engine->processInputQuery( *_inputQuery ) )
+        {
+            _engine->solve( Options::get()->getInt( Options::TIMEOUT ) );
+        }
+        if ( _engine->getExitCode() == Engine::SAT )
+            _engine->extractSolution( *_inputQuery );
+    }
+    else
+    {
+        for ( int target = 0; target < 10; ++target)
+        {
+            if ( target == correct )
+                continue;
+            _engine = std::unique_ptr<Engine>( new Engine());
+            InputQuery tmpInputQuery = *_inputQuery;
+            for ( unsigned other= 0; other < 10; ++other )
+            {
+                Equation eq(Equation::GE);
+                eq.addAddend( 1, tmpInputQuery.getOutputVariableByIndex(target) );
+                eq.addAddend( -1, tmpInputQuery.getOutputVariableByIndex(other) );
+                tmpInputQuery.addEquation(eq);
+            }
 
-    if ( _engine.getExitCode() == Engine::SAT )
-        _engine.extractSolution( *_inputQuery );
+            if ( _engine->processInputQuery( tmpInputQuery ) )
+            {
+                _engine->solve( Options::get()->getInt( Options::TIMEOUT ) );
+            }
+            if ( _engine->getExitCode() == Engine::SAT )
+            {
+                _engine->extractSolution( *_inputQuery );
+                return;
+            }
+        }
+    }
 }
 
 void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
 {
-    Engine::ExitCode result = _engine.getExitCode();
+    Engine::ExitCode result = _engine->getExitCode();
     String resultString;
 
     if ( result == Engine::UNSAT )
@@ -230,19 +263,19 @@ void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
 
         // Field #3: number of visited tree states
         summaryFile.write( Stringf( "%u ",
-                                    _engine.getStatistics()->getUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES ) ) );
+                                    _engine->getStatistics()->getUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES ) ) );
 
         // Field #4: number of flips
         summaryFile.write( Stringf( "%llu ",
-                                    _engine.getStatistics()->getLongAttr( Statistics::NUM_PROPOSED_FLIPS ) ) );
+                                    _engine->getStatistics()->getLongAttr( Statistics::NUM_PROPOSED_FLIPS ) ) );
 
         // Field #5: number of accepted flips
         summaryFile.write( Stringf( "%llu ",
-                                    _engine.getStatistics()->getLongAttr( Statistics::NUM_ACCEPTED_FLIPS ) ) );
+                                    _engine->getStatistics()->getLongAttr( Statistics::NUM_ACCEPTED_FLIPS ) ) );
 
         // Field #6: number of rejected flips
         summaryFile.write( Stringf( "%llu",
-                                    _engine.getStatistics()->getLongAttr( Statistics::NUM_REJECTED_FLIPS ) ) );
+                                    _engine->getStatistics()->getLongAttr( Statistics::NUM_REJECTED_FLIPS ) ) );
 
         summaryFile.write( "\n" );
         if ( resultString == "sat" )

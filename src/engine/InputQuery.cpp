@@ -462,6 +462,11 @@ List<unsigned> InputQuery::getOutputVariables() const
     return result;
 }
 
+unsigned InputQuery::getOutputVariableByIndex( unsigned index ) const
+{
+    return _outputIndexToVariable[index];
+}
+
 void InputQuery::printAllBounds() const
 {
     printf( "InputQuery: Dumping all bounds\n" );

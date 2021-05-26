@@ -59,7 +59,7 @@ private:
     /*
       The solver
     */
-    Engine _engine;
+    std::unique_ptr<Engine> _engine;
 };
 
 #endif // __Marabou_h__

@@ -63,6 +63,7 @@ public:
     unsigned getNumOutputVariables() const;
     List<unsigned> getInputVariables() const;
     List<unsigned> getOutputVariables() const;
+    unsigned getOutputVariableByIndex( unsigned index ) const;
 
     /*
       Methods for setting and getting the solution.

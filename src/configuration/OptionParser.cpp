@@ -118,6 +118,9 @@ void OptionParser::initialize()
         ( "target-label",
           boost::program_options::value<int>( &((*_intOptions)[Options::MAX_OUTPUT]) ),
           "target label" )
+        ( "correct-label",
+          boost::program_options::value<int>( &((*_intOptions)[Options::CORRECT_OUTPUT]) ),
+          "correct label" )
         ( "timeout-factor",
           boost::program_options::value<float>( &((*_floatOptions)[Options::TIMEOUT_FACTOR]) ),
           "(SnC) The timeout factor" )
