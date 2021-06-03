@@ -191,6 +191,8 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
             self.gemmEquations(node, makeEquations)
         elif node.op_type == 'MatMul':
             self.matMulEquations(node, makeEquations)
+        elif node.op_type == "Mul":
+            self.mulEquations(node, makeEquations)
         elif node.op_type == 'Add':
             self.addEquations(node, makeEquations)
         elif node.op_type == 'Relu': 
@@ -407,7 +409,7 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
             raise RuntimeError("Permutation indices not specified by attibute 'perm'")
         self.shapeMap[nodeName] = [self.shapeMap[inputName][p] for p in perm]
         if inputName in self.varMap:
-            self.varMap[nodeName] = np.transpose(self.varMap[node.input[0]], perm)
+            self.varMap[nodeName] = np.transpose(self.varMap[node.input[0]].reshape(self.shapeMap[node.input[0]]), perm)
         elif inputName in self.constantMap:
             self.constantMap[nodeName] = np.transpose(self.constantMap[inputName], perm)
     
@@ -683,7 +685,36 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
                 e.addAddend(-1, outputVariables[i])
                 e.setScalar(0.0)
                 self.addEquation(e)
-    
+
+    def mulEquations(self, node, makeEquations):
+        nodeName = node.output[0]
+
+        # Get the inputs
+        inputName1, inputName2 = node.input
+        shape1 = self.shapeMap[inputName1]
+        shape2 = self.shapeMap[inputName2]
+
+
+        # Get the broadcasted shape
+        outShape = shape1
+        self.shapeMap[nodeName] = outShape
+        if not makeEquations:
+            return
+
+        multiple = self.constantMap[inputName2]
+        input1 = self.varMap[inputName1]
+        outputVariables = self.makeNewVariables(nodeName)
+        input1 = input1.reshape(-1)
+        outputVariables = outputVariables.reshape(-1)
+
+        for i in range(len(input1)):
+            e = MarabouUtils.Equation()
+            e.addAddend(multiple, input1[i])
+            e.addAddend(-1, outputVariables[i])
+            e.setScalar(0.0)
+            self.addEquation(e)
+        return
+
     def addEquations(self, node, makeEquations):
         """Function to generate equations corresponding to addition
 
@@ -705,7 +736,6 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
         self.shapeMap[nodeName] = outShape
         if not makeEquations:
             return
-        
         # Decide which inputs are variables and which are constants
         firstInputConstant = False; secondInputConstant = False
         if inputName1 in self.constantMap:
