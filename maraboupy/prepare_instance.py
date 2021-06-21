@@ -17,9 +17,9 @@ import sys
 import tempfile
 import pathlib
 sys.path.insert(0, os.path.join(str(pathlib.Path(__file__).parent.absolute()), "../"))
-from maraboupy import Marabou
+from maraboupy.MarabouNetworkONNX import *
+from maraboupy.VNNLibParser import readVNNLibFile
 from maraboupy import MarabouCore
-from maraboupy import MarabouUtils
 import subprocess
 
 def main():
@@ -46,7 +46,7 @@ def createQuery(args):
     propPath = args.prop
     suffix = networkPath.split('.')[-1]
     assert(suffix == "onnx")
-    network = Marabou.read_onnx(networkPath)
+    network = MarabouNetworkONNX(networkPath)
     if args.debug:
         inputs = np.random.uniform(0,1, np.array(network.inputVars).shape)
         outputOnnx = network.evaluateWithoutMarabou(inputs)
@@ -54,8 +54,12 @@ def createQuery(args):
         assert((abs(outputOnnx - outputMarabou) < 0.00001).all())
         print("output onnx:", outputOnnx)
         print("output marabou:", outputMarabou)
+    if propPath != None:
+        readVNNLibFile(propPath, network)
 
-    return network.getMarabouQuery(), getInputQueryName(networkPath, propPath, args.work_dir)
+    ipq = network.getMarabouQuery()
+
+    return ipq, getInputQueryName(networkPath, propPath, args.work_dir)
 
 def arguments():
     ################################ Arguments parsing ##############################
