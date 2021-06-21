@@ -260,6 +260,9 @@ InputQuery &InputQuery::operator=( const InputQuery &other )
         {
             if ( constraint->getType() == DISJUNCTION )
             {
+                String s;
+                constraint->dump(s);
+                std::cout << s.ascii() << std::endl;
                 auto *newPlc = constraint->duplicateConstraint();
                 _plConstraints.append( newPlc );
                 ++numberOfDisjunctions;

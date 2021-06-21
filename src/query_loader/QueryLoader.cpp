@@ -16,6 +16,7 @@
 
 #include "AutoFile.h"
 #include "Debug.h"
+#include "DisjunctionConstraint.h"
 #include "Equation.h"
 #include "GlobalConfiguration.h"
 #include "InputQuery.h"
@@ -217,6 +218,10 @@ InputQuery QueryLoader::loadQuery( const String &fileName )
         else if ( coType == "sign" )
         {
             constraint = new SignConstraint( serializeConstraint );
+        }
+        else if ( coType == "disj" )
+        {
+            constraint = new DisjunctionConstraint( serializeConstraint );
         }
         else
         {
