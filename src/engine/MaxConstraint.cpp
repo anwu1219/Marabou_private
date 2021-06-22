@@ -9,9 +9,26 @@
  ** All rights reserved. See the file COPYING in the top-level source
  ** directory for licensing information.\endverbatim
  **
- ** [[ Add lengthier description here ]]
-
+ ** MaxConstraint implements the following constraint:
+ ** _f = Max( e1, e2, ..., eM), where _elements = { e1, e2, ..., eM}
+ **
+ ** The constraint will refer to elements as its phases, by wrapping the
+ ** variable identifiers as PhaseStatus enumeration. Additionally, during
+ ** preprocessing one or more phases may be eliminated from the constraint. A
+ ** maximum of such constraints is stored locally, and to denote this phase a
+ ** special value PhaseStatus::MAX_PHASE_ELIMINATED is used.
+ **
+ ** MaxConstraint operates in two modes: preprocessing, which uses local bounds
+ ** and values, and context-dependent mode which automatically backtracks the
+ ** constraint state. A MaxConstraints object enters context-dependent mode upon
+ ** invocation of MaxConstraint::initializeCDOs() and it cannot be undone.
+ **
+ ** Once in the context-dependent mode, MaxConstraint can be used for explicit
+ ** exploration of the search space, using the markInfeasible/nextFeasibleCase
+ ** methods.
 **/
+
+#include "MaxConstraint.h"
 
 #include "Debug.h"
 #include "FloatUtils.h"
@@ -20,7 +37,6 @@
 #include "List.h"
 #include "MStringf.h"
 #include "MarabouError.h"
-#include "MaxConstraint.h"
 #include "PiecewiseLinearCaseSplit.h"
 #include "Statistics.h"
 #include <algorithm>
@@ -31,12 +47,14 @@
 #endif
 
 MaxConstraint::MaxConstraint( unsigned f, const Set<unsigned> &elements )
-    : _f( f )
-    , _elements( elements )
-    , _initialElements( elements )
-    , _maxIndexSet( false )
-    , _maxLowerBound( FloatUtils::negativeInfinity() )
-    , _obsolete( false )
+    : ContextDependentPiecewiseLinearConstraint( elements.size() )
+    , _f( f )
+	, _elements( elements )
+	, _initialElements( elements )
+	, _maxLowerBound( FloatUtils::negativeInfinity() )
+	, _obsolete( false )
+	, _eliminatedVariables( false )
+	, _maxValueOfEliminated( FloatUtils::negativeInfinity() )
 {
 }
 
@@ -70,18 +88,27 @@ PiecewiseLinearFunctionType MaxConstraint::getType() const
     return PiecewiseLinearFunctionType::MAX;
 }
 
-PiecewiseLinearConstraint *MaxConstraint::duplicateConstraint() const
+ContextDependentPiecewiseLinearConstraint *MaxConstraint::duplicateConstraint() const
 {
     MaxConstraint *clone = new MaxConstraint( _f, _elements );
     *clone = *this;
-    clone->reinitializeCDOs();
+    clone->_eliminatedVariables = _eliminatedVariables;
+    clone->_maxValueOfEliminated = _maxValueOfEliminated;
+    this->initializeDuplicateCDOs( clone );
     return clone;
 }
 
 void MaxConstraint::restoreState( const PiecewiseLinearConstraint *state )
 {
     const MaxConstraint *max = dynamic_cast<const MaxConstraint *>( state );
+
+    CVC4::context::CDO<bool> *activeStatus = _cdConstraintActive;
+    CVC4::context::CDO<PhaseStatus> *phaseStatus = _cdPhaseStatus;
+    CVC4::context::CDList<PhaseStatus> *infeasibleCases = _cdInfeasibleCases;
     *this = *max;
+    _cdConstraintActive = activeStatus;
+    _cdPhaseStatus = phaseStatus;
+    _cdInfeasibleCases = infeasibleCases;
 }
 
 void MaxConstraint::registerAsWatcher( ITableau *tableau )
@@ -100,6 +127,16 @@ void MaxConstraint::unregisterAsWatcher( ITableau *tableau )
 
     if ( !_initialElements.exists( _f ) )
         tableau->unregisterToWatchVariable( this, _f );
+}
+
+void MaxConstraint::notifyVariableValue( unsigned variable, double value )
+{
+    if ( ( _elements.exists( _f ) || variable != _f ) &&
+         ( !maxIndexSet() || !_assignment.exists( getMaxIndex() ) || _assignment.get( getMaxIndex() ) < value ) )
+    {
+        setMaxIndex( variable );
+    }
+    _assignment[variable] = value;
 }
 
 void MaxConstraint::notifyLowerBound( unsigned variable, double value )
@@ -127,8 +164,12 @@ void MaxConstraint::notifyLowerBound( unsigned variable, double value )
         }
         for ( unsigned removeVar : toRemove )
         {
-            _elements.erase( removeVar );
-            if ( _maxIndex == removeVar )
+            if ( _cdInfeasibleCases )
+                markInfeasible( variableToPhase( variable ) );
+            else
+                _elements.erase( removeVar );
+
+            if ( maxIndexSet() && getMaxIndex() == removeVar )
                 maxErased = true;
         }
     }
@@ -161,8 +202,15 @@ void MaxConstraint::notifyUpperBound( unsigned variable, double value )
 
     if ( _elements.exists( variable ) && _f != variable && FloatUtils::lt( value, _maxLowerBound ) )
     {
-        _elements.erase( variable );
+        if ( _cdInfeasibleCases )
+            markInfeasible( variableToPhase( variable ) );
+        else
+            _elements.erase( variable );
     }
+
+    // If all elements have been eliminated, set the phase of the constraint.
+    if ( _elements.empty() )
+        setMaxIndex( MAX_PHASE_ELIMINATED );
 
     // There is no need to recompute the max lower bound and max index here.
 
@@ -264,11 +312,137 @@ unsigned MaxConstraint::getF() const
 
 bool MaxConstraint::satisfied() const
 {
-    return false;
+    if ( !( _assignment.exists( _f ) && _assignment.size() > 0 ) )
+        throw MarabouError( MarabouError::PARTICIPATING_VARIABLES_ABSENT );
+
+    double fValue = _assignment.get( _f );
+    double maxValue = FloatUtils::max( _assignment.get( getMaxIndex() ), _maxValueOfEliminated );
+    return FloatUtils::areEqual( maxValue, fValue );
+}
+
+bool MaxConstraint::isCaseInfeasible( unsigned variable ) const
+{
+    return ContextDependentPiecewiseLinearConstraint::isCaseInfeasible( variableToPhase( variable ) );
 }
 
 void MaxConstraint::resetMaxIndex()
 {
+    double maxValue = FloatUtils::negativeInfinity();
+    clearMaxIndex();
+
+    if ( _assignment.empty() ||
+         ( _assignment.size() == 1 && !_elements.exists( _f ) && _assignment.begin()->first == _f ) )
+    {
+        // If none of the variables has been assigned, the max index is
+        // not set
+        return;
+    }
+    else
+    {
+        for ( auto element : _elements )
+        {
+            if ( _cdInfeasibleCases && isCaseInfeasible( element ) )
+                continue;
+
+            if ( _assignment.exists( element ) )
+            {
+                double elementValue = _assignment[element];
+
+                if ( !maxIndexSet() || elementValue > maxValue )
+                {
+                    setMaxIndex( element );
+                    maxValue = elementValue;
+                }
+            }
+        }
+
+        ASSERT( maxIndexSet() );
+    }
+
+    ASSERT( !maxIndexSet() || FloatUtils::isFinite( maxValue ) );
+}
+
+List<PiecewiseLinearConstraint::Fix> MaxConstraint::getPossibleFixes() const
+{
+    ASSERT( !satisfied() );
+    ASSERT( _assignment.exists( _f ) && ( _assignment.size() > 1 || _eliminatedVariables ) );
+
+    double fValue = _assignment.get( _f );
+    double maxVal = FloatUtils::max( _assignment.get( getMaxIndex() ), _maxValueOfEliminated );
+
+    List<PiecewiseLinearConstraint::Fix> fixes;
+
+    // Possible violations
+    //	1. f is greater than maxVal
+    //	2. f is less than maxVal
+    //  3. f is greater than all variables except one
+
+    if ( FloatUtils::gt( fValue, maxVal ) )
+    {
+        fixes.append( PiecewiseLinearConstraint::Fix( _f, maxVal ) );
+        for ( auto elem : _elements )
+            if ( !_cdInfeasibleCases || !isCaseInfeasible( elem ) )
+                fixes.append( PiecewiseLinearConstraint::Fix( elem, fValue ) );
+    }
+    else if ( FloatUtils::lt( fValue, maxVal ) )
+    {
+        fixes.append( PiecewiseLinearConstraint::Fix( _f, maxVal ) );
+
+        unsigned greaterVar;
+        unsigned numGreater = 0;
+        for ( auto element : _elements )
+        {
+            if ( _cdInfeasibleCases && !isCaseInfeasible( element ) )
+                continue;
+
+            if ( _assignment.exists( element ) && FloatUtils::gt( _assignment[element], fValue ) )
+            {
+                ++numGreater;
+                greaterVar = element;
+            }
+        }
+        if ( numGreater == 1 )
+        {
+            fixes.append( PiecewiseLinearConstraint::Fix( greaterVar, fValue ) );
+        }
+    }
+
+    return fixes;
+}
+
+List<PiecewiseLinearConstraint::Fix> MaxConstraint::getSmartFixes( ITableau * ) const
+{
+    ASSERT( !satisfied() );
+    ASSERT( _assignment.exists( _f ) && _assignment.size() > 1 );
+
+    // TODO
+    return getPossibleFixes();
+}
+
+List<PhaseStatus> MaxConstraint::getAllCases() const
+{
+    if ( _phaseStatus != PHASE_NOT_FIXED )
+        throw MarabouError( MarabouError::REQUESTED_CASE_SPLITS_FROM_FIXED_CONSTRAINT );
+
+    List<PhaseStatus> cases;
+
+    if ( !_elements.exists( _f ) )
+    {
+        for ( unsigned element : _elements )
+            cases.append( variableToPhase( element ) );
+
+        if ( _eliminatedVariables )
+            cases.append( MAX_PHASE_ELIMINATED );
+    }
+    else
+    {
+        // if elements includes _f, this piecewise linear constraint
+        // can immediately be transformed into a conjunction of linear
+        // constraints
+        cases.append( variableToPhase( _f ) );
+    }
+
+    return cases;
 }
 
 List<PiecewiseLinearCaseSplit> MaxConstraint::getCaseSplits() const
@@ -282,7 +456,8 @@ List<PiecewiseLinearCaseSplit> MaxConstraint::getCaseSplits() const
     {
         for ( unsigned element : _elements )
         {
-            splits.append( getSplit( element ) );
+            if ( !_cdInfeasibleCases || !isCaseInfeasible( element ) )
+                splits.append( getSplit( element ) );
         }
     }
     else
@@ -301,18 +476,38 @@ bool MaxConstraint::phaseFixed() const
     return _elements.size() == 1 || _elements.exists( _f );
 }
 
-PiecewiseLinearCaseSplit MaxConstraint::getValidCaseSplit() const
+bool MaxConstraint::isImplication() const
+{
+    return _elements.exists( _f ) || numFeasibleCases() == 1u;
+}
+
+PiecewiseLinearCaseSplit MaxConstraint::getImpliedCaseSplit() const
 {
     ASSERT( phaseFixed() );
-    if ( !_elements.exists( _f ) )
-        return getSplit( *( _elements.begin() ) );
-    else
+
+    PhaseStatus phase = getPhaseStatus();
+
+    ASSERT( phase != PHASE_NOT_FIXED );
+
+    if ( phase == MAX_PHASE_ELIMINATED )
     {
-        // if elements includes _f, this piecewise linear constraint
-        // can immediately be transformed into a conjunction of linear
-        // constraints
-        return getSplit( _f );
+        PiecewiseLinearCaseSplit phaseOfEliminatedIsMax;
+        phaseOfEliminatedIsMax.storeBoundTightening( Tightening( _f, _maxValueOfEliminated, Tightening::LB ) );
+        phaseOfEliminatedIsMax.storeBoundTightening( Tightening( _f, _maxValueOfEliminated, Tightening::UB ) );
+        return phaseOfEliminatedIsMax;
     }
+
+    return getCaseSplit( phase ); // Handles the special case of _f being the phase
+}
+
+PiecewiseLinearCaseSplit MaxConstraint::getValidCaseSplit() const
+{
+    return getImpliedCaseSplit();
+}
+
+PiecewiseLinearCaseSplit MaxConstraint::getCaseSplit( PhaseStatus phase ) const
+{
+    return getSplit( phaseToVariable( phase ) );
 }
 
 PiecewiseLinearCaseSplit MaxConstraint::getSplit( unsigned argMax ) const
@@ -378,6 +573,18 @@ bool MaxConstraint::constraintObsolete() const
 
 void MaxConstraint::eliminateVariable( unsigned var, double /*value*/ )
 {
+    // First elimination does not remove number of cases, since it
+    // simultaneously adds MAX_PHASE_ELIMINATED
+    if ( _eliminatedVariables && _elements.exists( var ) )
+    {
+        ASSERT( _numCases > 1u ); // MAX_PHASE_ELIMINATED cannot be removed
+        --_numCases;
+    }
+
+    _eliminatedVariables = true;
+    _maxValueOfEliminated = FloatUtils::max( value, _maxValueOfEliminated );
+    _maxLowerBound = FloatUtils::max( _maxLowerBound, _maxValueOfEliminated );
+
     _elements.erase( var );
     if ( var == _f || getParticipatingVariables().size() == 1 )
         _obsolete = true;
@@ -419,11 +626,3 @@ String MaxConstraint::serializeToString() const
         output += Stringf( ",%u", element );
     return output;
 }
-
-//
-// Local Variables:
-// compile-command: "make -C ../.. "
-// tags-file-name: "../../TAGS"
-// c-basic-offset: 4
-// End:
-//

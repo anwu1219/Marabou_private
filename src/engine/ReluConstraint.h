@@ -9,20 +9,30 @@
  ** All rights reserved. See the file COPYING in the top-level source
  ** directory for licensing information.\endverbatim
  **
- ** [[ Add lengthier description here ]]
-
+ ** ReluConstraint implements the following constraint:
+ ** f = Max( 0, b )
+ **
+ ** It distinguishes two relevant phases for search:
+ ** RELU_PHASE_ACTIVE   : b > 0 and f > 0
+ ** RELU_PHASE_INACTIVE : b <=0 and f = 0
+ **
+ ** The constraint operates in two modes: pre-processing mode, which stores
+ ** bounds locally, and context dependent mode, which is used during the search.
+ ** Invoking initializeCDOs method activates the context dependent mode, and the
+ ** constraint object synchronizes its state automatically with the central context
+ ** object.
  **/
 
 #ifndef __ReluConstraint_h__
 #define __ReluConstraint_h__
 
-#include "context/context.h"
-#include "context/cdo.h"
+#include "ContextDependentPiecewiseLinearConstraint.h"
+#include "List.h"
 #include "Map.h"
 #include "PiecewiseLinearConstraint.h"
 #include <cmath>
 
-class ReluConstraint : public PiecewiseLinearConstraint
+class ReluConstraint : public ContextDependentPiecewiseLinearConstraint
 {
 public:
     /*
@@ -35,18 +45,18 @@ public:
     /*
       Get the type of this constraint.
     */
-    PiecewiseLinearFunctionType getType() const;
+    PiecewiseLinearFunctionType getType() const override;
 
     /*
       Return a clone of the constraint.
     */
-    PiecewiseLinearConstraint *duplicateConstraint() const;
+    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
 
     /*
       Register/unregister the constraint with a talbeau.
      */
-    void registerAsWatcher( ITableau *tableau );
-    void unregisterAsWatcher( ITableau *tableau );
+    void registerAsWatcher( ITableau *tableau ) override;
+    void unregisterAsWatcher( ITableau *tableau ) override;
 
     /*
       These callbacks are invoked when a watched variable's value
@@ -59,17 +69,17 @@ public:
       Returns true iff the variable participates in this piecewise
       linear constraint
     */
-    bool participatingVariable( unsigned variable ) const;
+    bool participatingVariable( unsigned variable ) const override;
 
     /*
       Get the list of variables participating in this constraint.
     */
-    List<unsigned> getParticipatingVariables() const;
+    List<unsigned> getParticipatingVariables() const override;
 
     /*
       Returns true iff the assignment satisfies the constraint
     */
-    bool satisfied() const;
+    bool satisfied() const override;
 
     /*
       Returns the list of case splits that this piecewise linear
@@ -77,14 +87,12 @@ public:
       i.e. if the list is {l1, l2, ..., ln-1, ln},
       then ~l1 /\ ~l2 /\ ... /\ ~ln-1 --> ln.
      */
-    List<PiecewiseLinearCaseSplit> getCaseSplits() const;
+    List<PiecewiseLinearCaseSplit> getCaseSplits() const override;
 
     /*
-      Check if the constraint's phase has been fixed.
+      If the constraint's phase has been fixed, get the (valid) case split.
     */
-    inline bool phaseFixed() const
-    {
-        DEBUG({
+    PiecewiseLinearCaseSplit getValidCaseSplit() const override;
 
                 if ( *_phaseStatus == RELU_PHASE_ACTIVE && _boundManager )
                     {
@@ -107,9 +115,26 @@ public:
     }
 
     /*
+       Returns a list of all cases - { RELU_ACTIVE, RELU_INACTIVE}
+       The order of returned cases affects the search, and this method is where related
+       heuristics should be implemented.
+     */
+    List<PhaseStatus> getAllCases() const override;
+
+    /*
+       Returns case split corresponding to the given phase/id
+     */
+    PiecewiseLinearCaseSplit getCaseSplit( PhaseStatus phase ) const override;
+
+    /*
       If the constraint's phase has been fixed, get the (valid) case split.
     */
-    PiecewiseLinearCaseSplit getValidCaseSplit() const;
+    PiecewiseLinearCaseSplit getImpliedCaseSplit() const override;
+
+    /*
+      Check if the constraint's phase has been fixed.
+    */
+    bool phaseFixed() const override;
 
     /*
       Preprocessing related functions, to inform that a variable has
@@ -118,19 +143,19 @@ public:
       x2). constraintObsolete() returns true iff and the constraint
       has become obsolote as a result of variable eliminations.
     */
-    void eliminateVariable( unsigned variable, double fixedValue );
-    void updateVariableIndex( unsigned oldIndex, unsigned newIndex );
-    bool constraintObsolete() const;
+    void eliminateVariable( unsigned variable, double fixedValue ) override;
+    void updateVariableIndex( unsigned oldIndex, unsigned newIndex ) override;
+    bool constraintObsolete() const override;
 
     /*
       Get the tightenings entailed by the constraint.
     */
-    void getEntailedTightenings( List<Tightening> &tightenings ) const;
+    void getEntailedTightenings( List<Tightening> &tightenings ) const override;
 
     /*
       Dump the current state of the constraint.
     */
-    void dump( String &output ) const;
+    void dump( String &output ) const override;
 
     /*
       For preprocessing: get any auxiliary equations that this
@@ -138,7 +163,7 @@ public:
       case, this is an equation of the form aux = f - b, where aux is
       non-negative.
     */
-    void addAuxiliaryEquations( InputQuery &inputQuery );
+    void addAuxiliaryEquations( InputQuery &inputQuery ) override;
 
     /*
       Ask the piecewise linear constraint to contribute a component to the cost
@@ -146,12 +171,12 @@ public:
       satisfied or inactive, and should be non-empty otherwise. Minimizing the returned
       equation should then lead to the constraint being "closer to satisfied".
     */
-    virtual void getCostFunctionComponent( Map<unsigned, double> &cost ) const;
+    virtual void getCostFunctionComponent( Map<unsigned, double> &cost ) const override;
 
     /*
       Returns string with shape: relu, _f, _b
     */
-    String serializeToString() const;
+    String serializeToString() const override;
 
     /*
       Get the index of the B and F variables.
@@ -183,10 +208,16 @@ public:
     */
     double computePolarity() const;
 
-    void updateScoreBasedOnPolarity();
+    /*
+      Update the preferred direction for fixing and handling case split
+    */
+    void updateDirection() override;
 
+
+    PhaseStatus getDirection() const;
     void addCostFunctionComponent( Map<unsigned, double> &costTerms, PhaseStatus phaseStatus );
 
+    void updateScoreBasedOnPolarity() override;
     void addCostFunctionComponent( Map<unsigned, double> &costTerms );
 
     void addCostFunctionComponentByOutputValue( Map<unsigned, double> &costTerms, double value );
@@ -217,10 +248,3 @@ private:
 
 #endif // __ReluConstraint_h__
 
-//
-// Local Variables:
-// compile-command: "make -C ../.. "
-// tags-file-name: "../../TAGS"
-// c-basic-offset: 4
-// End:
-//

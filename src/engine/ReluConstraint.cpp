@@ -12,6 +12,9 @@
  ** [[ Add lengthier description here ]]
  **/
 
+#include "ReluConstraint.h"
+
+#include "ContextDependentPiecewiseLinearConstraint.h"
 #include "Debug.h"
 #include "DivideStrategy.h"
 #include "FloatUtils.h"
@@ -20,7 +23,6 @@
 #include "InputQuery.h"
 #include "MStringf.h"
 #include "PiecewiseLinearCaseSplit.h"
-#include "ReluConstraint.h"
 #include "MarabouError.h"
 #include "Statistics.h"
 #include "TableauRow.h"
@@ -34,7 +36,8 @@
 #endif
 
 ReluConstraint::ReluConstraint( unsigned b, unsigned f )
-    : _b( b )
+    : ContextDependentPiecewiseLinearConstraint( TWO_PHASE_PIECEWISE_LINEAR_CONSTRAINT )
+    , _b( b )
     , _f( f )
     , _auxVarInUse( false )
     , _haveEliminatedVariables( false )
@@ -80,11 +83,11 @@ PiecewiseLinearFunctionType ReluConstraint::getType() const
     return PiecewiseLinearFunctionType::RELU;
 }
 
-PiecewiseLinearConstraint *ReluConstraint::duplicateConstraint() const
+ContextDependentPiecewiseLinearConstraint *ReluConstraint::duplicateConstraint() const
 {
     ReluConstraint *clone = new ReluConstraint( _b, _f );
     *clone = *this;
-    clone->reinitializeCDOs();
+    this->initializeDuplicateCDOs( clone );
     return clone;
 }
 
@@ -264,6 +267,37 @@ List<PiecewiseLinearCaseSplit> ReluConstraint::getCaseSplits() const
     }
 }
 
+List<PhaseStatus> ReluConstraint::getAllCases() const
+{
+    if ( _direction == RELU_PHASE_INACTIVE )
+        return { RELU_PHASE_INACTIVE, RELU_PHASE_ACTIVE };
+
+    if ( _direction == RELU_PHASE_ACTIVE )
+        return { RELU_PHASE_ACTIVE, RELU_PHASE_INACTIVE };
+
+    // If we have existing knowledge about the assignment, use it to
+    // influence the order of splits
+    if ( _assignment.exists( _f ) )
+    {
+        if ( FloatUtils::isPositive( _assignment[_f] ) )
+            return { RELU_PHASE_ACTIVE, RELU_PHASE_INACTIVE };
+        else
+            return { RELU_PHASE_INACTIVE, RELU_PHASE_ACTIVE };
+    }
+    else
+        return { RELU_PHASE_INACTIVE, RELU_PHASE_ACTIVE };
+}
+
+PiecewiseLinearCaseSplit ReluConstraint::getCaseSplit( PhaseStatus phase ) const
+{
+    if ( phase == RELU_PHASE_INACTIVE )
+        return getInactiveSplit();
+    else if ( phase == RELU_PHASE_ACTIVE )
+        return getActiveSplit();
+    else
+        throw MarabouError( MarabouError::REQUESTED_NONEXISTENT_CASE_SPLIT );
+}
+
 PiecewiseLinearCaseSplit ReluConstraint::getInactiveSplit() const
 {
     // Inactive phase: b <= 0, f = 0
@@ -297,7 +331,12 @@ PiecewiseLinearCaseSplit ReluConstraint::getActiveSplit() const
     return activePhase;
 }
 
-PiecewiseLinearCaseSplit ReluConstraint::getValidCaseSplit() const
+bool ReluConstraint::phaseFixed() const
+{
+    return _phaseStatus != PHASE_NOT_FIXED;
+}
+
+PiecewiseLinearCaseSplit ReluConstraint::getImpliedCaseSplit() const
 {
     ASSERT( *_phaseStatus != PHASE_NOT_FIXED );
 
@@ -305,6 +344,11 @@ PiecewiseLinearCaseSplit ReluConstraint::getValidCaseSplit() const
         return getActiveSplit();
 
     return getInactiveSplit();
+}
+
+PiecewiseLinearCaseSplit ReluConstraint::getValidCaseSplit() const
+{
+    return getImpliedCaseSplit();
 }
 
 void ReluConstraint::dump( String &output ) const
