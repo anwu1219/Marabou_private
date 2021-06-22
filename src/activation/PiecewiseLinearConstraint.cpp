@@ -18,11 +18,9 @@
 #include "Statistics.h"
 
 PiecewiseLinearConstraint::PiecewiseLinearConstraint()
-    : _boundManager( NULL )
-    , _gurobi( NULL )
-    , _context( NULL )
-    , _constraintActive( NULL )
-    , _phaseStatus( NULL )
+    : _gurobi( NULL )
+    , _constraintActive( true )
+    , _phaseStatus( PHASE_NOT_FIXED )
     , _score( FloatUtils::negativeInfinity() )
     , _statistics( NULL )
     , _phaseOfHeuristicCost( PHASE_NOT_FIXED )

@@ -16,7 +16,6 @@
 #ifndef __PiecewiseLinearConstraint_h__
 #define __PiecewiseLinearConstraint_h__
 
-#include "BoundManager.h"
 #include "FloatUtils.h"
 #include "LPSolver.h"
 #include "ITableau.h"
@@ -26,13 +25,9 @@
 #include "PiecewiseLinearFunctionType.h"
 #include "Queue.h"
 #include "Tightening.h"
-#include "Vector.h"
-
-#include "context/context.h"
-#include "context/cdo.h"
-#include "context/cdlist.h"
 
 class Equation;
+class IConstraintBoundTightener;
 class ITableau;
 class InputQuery;
 class String;
@@ -46,7 +41,10 @@ enum PhaseStatus : unsigned {
     ABS_PHASE_POSITIVE = 3,
     ABS_PHASE_NEGATIVE = 4,
     SIGN_PHASE_POSITIVE = 5,
-    SIGN_PHASE_NEGATIVE = 6
+    SIGN_PHASE_NEGATIVE = 6,
+
+    // SENTINEL VALUE
+    CONSTRAINT_INFEASIBLE = 65535
 };
 
 class PiecewiseLinearConstraint : public ITableau::VariableWatcher
@@ -77,13 +75,7 @@ public:
     };
 
     PiecewiseLinearConstraint();
-    virtual ~PiecewiseLinearConstraint()
-    {
-        if ( _constraintActive )
-            _constraintActive->deleteSelf();
-        if ( _phaseStatus )
-            _phaseStatus->deleteSelf();
-    }
+    virtual ~PiecewiseLinearConstraint() {};
 
     bool operator<( const PiecewiseLinearConstraint &other ) const
     {
@@ -114,13 +106,12 @@ public:
     */
     virtual void setActiveConstraint( bool active )
     {
-        ASSERT( _constraintActive )
-        *_constraintActive = active;
+        _constraintActive = active;
     }
 
     virtual bool isActive() const
     {
-        return *_constraintActive;
+        return _constraintActive;
     }
 
     /*
@@ -316,12 +307,10 @@ public:
     };
 
 protected:
-    BoundManager *_boundManager;
     LPSolver *_gurobi;
 
-    CVC4::context::Context *_context;
-    CVC4::context::CDO<bool> *_constraintActive;
-    CVC4::context::CDO<PhaseStatus> *_phaseStatus;
+    bool _constraintActive;
+    PhaseStatus _phaseStatus;
 
     Map<unsigned, double> _lowerBounds;
     Map<unsigned, double> _upperBounds;
@@ -346,11 +335,15 @@ protected:
      */
     void setPhaseStatus( PhaseStatus phase )
     {
-        ASSERT( _phaseStatus );
-        *_phaseStatus = phase;
+        _phaseStatus = phase;
     };
 
-    void reinitializeCDOs()
+    PhaseStatus getPhaseStatus() const
+    {
+        return _phaseStatus;
+    };
+
+/*    void reinitializeCDOs()
     {
         if ( _context == nullptr )
         {
@@ -364,7 +357,8 @@ protected:
         _constraintActive = new (true) CVC4::context::CDO<bool>( _context, constraintActive );
         PhaseStatus phaseStatus = *_phaseStatus;
         _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, phaseStatus );
-    };
+    };*/
+
 };
 
 #endif // __PiecewiseLinearConstraint_h__
