@@ -91,6 +91,12 @@ public:
     void restoreState( const EngineState &state );
 
     /*
+      Preprocessor access.
+    */
+    bool preprocessingEnabled() const;
+    const Preprocessor *getPreprocessor();
+
+    /*
       A request from the user to terminate
     */
     void quitSignal();

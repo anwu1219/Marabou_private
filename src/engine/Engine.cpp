@@ -1558,3 +1558,13 @@ void Engine::updateScore( PiecewiseLinearConstraint *constraint,
     _statistics.incLongAttr( Statistics::TIME_BRANCHING_HEURISTICS_MICRO,
                              TimeUtils::timePassed( start, end ) );
 }
+
+bool Engine::preprocessingEnabled() const
+{
+    return _preprocessingEnabled;
+}
+
+const Preprocessor *Engine::getPreprocessor()
+{
+    return &_preprocessor;
+}
