@@ -289,12 +289,25 @@ public:
 
     void initializeCDOs( CVC4::context::Context *context )
     {
-        ASSERT( NULL == _context );
-        ASSERT( NULL == _constraintActive );
-        ASSERT( NULL == _phaseStatus );
-        _context = context;
-        _constraintActive = new (true) CVC4::context::CDO<bool>( _context, true );
-        _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, PHASE_NOT_FIXED );
+        if ( _context == NULL )
+        {
+            ASSERT( NULL == _context );
+            ASSERT( NULL == _constraintActive );
+            ASSERT( NULL == _phaseStatus );
+            _context = context;
+            _constraintActive = new (true) CVC4::context::CDO<bool>( _context, true );
+            _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, PHASE_NOT_FIXED );
+        }
+        else
+        {
+            _context = context;
+            bool constraintActive = *_constraintActive;
+            _constraintActive->deleteSelf();
+            _constraintActive = new (true) CVC4::context::CDO<bool>( _context, constraintActive );
+            PhaseStatus phaseStatus = *_phaseStatus;
+            _phaseStatus->deleteSelf();
+            _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, phaseStatus );
+        }
     }
 
     PhaseStatus getPhaseStatus() const

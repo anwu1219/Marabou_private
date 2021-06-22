@@ -93,7 +93,6 @@ bool Engine::performLocalSearch()
       _smtCore.reportRandomFlip();
       return false;
     }
-    
     // All the linear constraints have been satisfied at this point.
     // Update the cost function
     _heuristicCostManager.initiateCostFunctionForLocalSearch();
@@ -122,7 +121,6 @@ bool Engine::performLocalSearch()
                 ASSERT( !FloatUtils::isZero( _heuristicCostManager.computeHeuristicCost() ) );
             }
         }
-
         PiecewiseLinearConstraint *lastFlippedConstraint = _heuristicCostManager.updateHeuristicCost();
         optimizeForHeuristicCost();
         _heuristicCostManager.updateCostTermsForSatisfiedPLConstraints();

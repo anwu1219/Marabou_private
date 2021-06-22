@@ -16,6 +16,7 @@
 #include "Debug.h"
 #include "SnCDivideStrategy.h"
 #include "DnCWorker.h"
+#include "InfeasibleQueryException.h"
 #include "IEngine.h"
 #include "LargestIntervalDivider.h"
 #include "MarabouError.h"
@@ -81,12 +82,19 @@ void DnCWorker::popOneSubQueryAndSolve()
         // object of class DnCStatistics, which contains some basic
         // statistics. The maps are owned by the DnCManager.
 
+        IEngine::ExitCode result = IEngine::NOT_DONE;
         // Apply the split and solve
-        _engine->applySplit( *split );
-
-        _engine->solve( timeoutInSeconds );
-        auto result = _engine->getExitCode();
-
+        try
+        {
+            _engine->pushContext();
+            _engine->applySplit( *split );
+            _engine->solve( timeoutInSeconds );
+            result = _engine->getExitCode();
+        }
+        catch ( const InfeasibleQueryException & )
+        {
+            result = IEngine::UNSAT;
+        }
         if ( _verbosity > 0 )
             printProgress( queryId, result );
         // Switch on the result

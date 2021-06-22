@@ -55,10 +55,10 @@ void SmtCore::freeMemory()
 
 void SmtCore::reset()
 {
-    freeMemory();
+    _context.popto( 0 );
     _needToSplit = false;
     _constraintForSplitting = NULL;
-    _numberOfRandomFlips = 0;
+    freeMemory();
 }
 
 void SmtCore::reportRandomFlip()
@@ -145,7 +145,7 @@ bool SmtCore::popSplit()
 
     if ( _stack.empty() )
     {
-        ASSERT( _context.getLevel() == 0 );
+        //ASSERT( _context.getLevel() == 0 );
         return false;
     }
 
