@@ -248,7 +248,7 @@ bool ReluConstraint::satisfied() const
 
 List<PiecewiseLinearCaseSplit> ReluConstraint::getCaseSplits() const
 {
-    if ( *_phaseStatus != PHASE_NOT_FIXED )
+    if ( getPhaseStatus() != PHASE_NOT_FIXED )
         throw MarabouError( MarabouError::REQUESTED_CASE_SPLITS_FROM_FIXED_CONSTRAINT );
 
     List<PiecewiseLinearCaseSplit> splits;
@@ -338,9 +338,9 @@ bool ReluConstraint::phaseFixed() const
 
 PiecewiseLinearCaseSplit ReluConstraint::getImpliedCaseSplit() const
 {
-    ASSERT( *_phaseStatus != PHASE_NOT_FIXED );
+    ASSERT( getPhaseStatus() != PHASE_NOT_FIXED );
 
-    if ( *_phaseStatus == RELU_PHASE_ACTIVE )
+    if ( getPhaseStatus() == RELU_PHASE_ACTIVE )
         return getActiveSplit();
 
     return getInactiveSplit();
@@ -353,10 +353,10 @@ PiecewiseLinearCaseSplit ReluConstraint::getValidCaseSplit() const
 
 void ReluConstraint::dump( String &output ) const
 {
-    PhaseStatus phase = *_phaseStatus;
+    PhaseStatus phase = getPhaseStatus();
     output = Stringf( "ReluConstraint: x%u = ReLU( x%u ). Active? %s. PhaseStatus = %u (%s).\n",
                       _f, _b,
-                      *_constraintActive ? "Yes" : "No",
+                      isActive() ? "Yes" : "No",
                       phase, phaseToString( phase ).ascii()
                       );
 
@@ -419,11 +419,11 @@ void ReluConstraint::eliminateVariable( __attribute__((unused)) unsigned variabl
             {
                 if ( FloatUtils::gt( fixedValue, 0 ) )
                 {
-                    ASSERT( *_phaseStatus != RELU_PHASE_INACTIVE );
+                    ASSERT( getPhaseStatus() != RELU_PHASE_INACTIVE );
                 }
                 else if ( FloatUtils::lt( fixedValue, 0 ) )
                 {
-                    ASSERT( *_phaseStatus != RELU_PHASE_ACTIVE );
+                    ASSERT( getPhaseStatus() != RELU_PHASE_ACTIVE );
                 }
             }
             else
@@ -431,7 +431,7 @@ void ReluConstraint::eliminateVariable( __attribute__((unused)) unsigned variabl
                 // This is the aux variable
                 if ( FloatUtils::isPositive( fixedValue ) )
                 {
-                    ASSERT( *_phaseStatus != RELU_PHASE_ACTIVE );
+                    ASSERT( getPhaseStatus() != RELU_PHASE_ACTIVE );
                 }
             }
         });

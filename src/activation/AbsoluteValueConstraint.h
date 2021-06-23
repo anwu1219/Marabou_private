@@ -47,12 +47,12 @@ public:
     /*
       Return a clone of the constraint.
     */
-    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
+    AbsoluteValueConstraint *duplicateConstraint() const override;
 
-    /*
-      Restore the state of this constraint from the given one.
-    */
-    void restoreState( const PiecewiseLinearConstraint *state ) override;
+    /* /\* */
+    /*   Restore the state of this constraint from the given one. */
+    /* *\/ */
+    /* void restoreState( const PiecewiseLinearConstraint *state ) override; */
 
     /*
       Register/unregister the constraint with a talbeau.

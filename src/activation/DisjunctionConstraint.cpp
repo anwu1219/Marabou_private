@@ -40,10 +40,10 @@ DisjunctionConstraint::DisjunctionConstraint( const Vector<PiecewiseLinearCaseSp
     extractParticipatingVariables();
 }
 
-DisjunctionConstraint::DisjunctionConstraint( const String &/* serializedDisjunction */ )
+DisjunctionConstraint::DisjunctionConstraint( const String & serializedDisjunction )
 {
     std::cout << serializedDisjunction.ascii() << std::endl;
-    List<PiecewiseLinearCaseSplit> disjuncts;
+    Vector<PiecewiseLinearCaseSplit> disjuncts;
     String serializedValues = serializedDisjunction.substring( 5, serializedDisjunction.length() - 5 );
     List<String> values = serializedValues.tokenize( "," );
     auto val = values.begin();
@@ -94,8 +94,10 @@ DisjunctionConstraint::DisjunctionConstraint( const String &/* serializedDisjunc
         }
         disjuncts.append(split);
     }
+
     _disjuncts = disjuncts;
-    _feasibleDisjuncts = disjuncts;
+    for ( unsigned ind = 0;  ind < disjuncts.size();  ++ind )
+        _feasibleDisjuncts.append( ind );
     extractParticipatingVariables();
 }
 
@@ -112,18 +114,18 @@ ContextDependentPiecewiseLinearConstraint *DisjunctionConstraint::duplicateConst
     return clone;
 }
 
-void DisjunctionConstraint::restoreState( const PiecewiseLinearConstraint *state )
-{
-    const DisjunctionConstraint *disjunction = dynamic_cast<const DisjunctionConstraint *>( state );
+// void DisjunctionConstraint::restoreState( const PiecewiseLinearConstraint *state )
+// {
+//     const DisjunctionConstraint *disjunction = dynamic_cast<const DisjunctionConstraint *>( state );
 
-    CVC4::context::CDO<bool> *activeStatus = _cdConstraintActive;
-    CVC4::context::CDO<PhaseStatus> *phaseStatus = _cdPhaseStatus;
-    CVC4::context::CDList<PhaseStatus> *infeasibleCases = _cdInfeasibleCases;
-    *this = *disjunction;
-    _cdConstraintActive = activeStatus;
-    _cdPhaseStatus = phaseStatus;
-    _cdInfeasibleCases = infeasibleCases;
-}
+//     CVC4::context::CDO<bool> *activeStatus = _cdConstraintActive;
+//     CVC4::context::CDO<PhaseStatus> *phaseStatus = _cdPhaseStatus;
+//     CVC4::context::CDList<PhaseStatus> *infeasibleCases = _cdInfeasibleCases;
+//     *this = *disjunction;
+//     _cdConstraintActive = activeStatus;
+//     _cdPhaseStatus = phaseStatus;
+//     _cdInfeasibleCases = infeasibleCases;
+// }
 
 void DisjunctionConstraint::registerAsWatcher( ITableau *tableau )
 {

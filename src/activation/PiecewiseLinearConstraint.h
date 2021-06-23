@@ -270,42 +270,42 @@ public:
 
     virtual void extractVariableValueFromGurobi( LPSolver & ){};
 
-    void registerBoundManager( BoundManager *boundManager )
-    {
-        _boundManager = boundManager;
-    }
+    /* void registerBoundManager( BoundManager *boundManager ) */
+    /* { */
+    /*     _boundManager = boundManager; */
+    /* } */
 
     void registerGurobi( LPSolver *gurobi )
     {
         _gurobi = gurobi;
     }
 
-    void initializeCDOs( CVC4::context::Context *context )
-    {
-        if ( _context == NULL )
-        {
-            ASSERT( NULL == _context );
-            ASSERT( NULL == _constraintActive );
-            ASSERT( NULL == _phaseStatus );
-            _context = context;
-            _constraintActive = new (true) CVC4::context::CDO<bool>( _context, true );
-            _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, PHASE_NOT_FIXED );
-        }
-        else
-        {
-            _context = context;
-            bool constraintActive = *_constraintActive;
-            _constraintActive->deleteSelf();
-            _constraintActive = new (true) CVC4::context::CDO<bool>( _context, constraintActive );
-            PhaseStatus phaseStatus = *_phaseStatus;
-            _phaseStatus->deleteSelf();
-            _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, phaseStatus );
-        }
-    }
+    /* void initializeCDOs( CVC4::context::Context *context ) */
+    /* { */
+    /*     if ( _context == NULL ) */
+    /*     { */
+    /*         ASSERT( NULL == _context ); */
+    /*         ASSERT( NULL == _constraintActive ); */
+    /*         ASSERT( NULL == _phaseStatus ); */
+    /*         _context = context; */
+    /*         _constraintActive = new (true) CVC4::context::CDO<bool>( _context, true ); */
+    /*         _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, PHASE_NOT_FIXED ); */
+    /*     } */
+    /*     else */
+    /*     { */
+    /*         _context = context; */
+    /*         bool constraintActive = *_constraintActive; */
+    /*         _constraintActive->deleteSelf(); */
+    /*         _constraintActive = new (true) CVC4::context::CDO<bool>( _context, constraintActive ); */
+    /*         PhaseStatus phaseStatus = *_phaseStatus; */
+    /*         _phaseStatus->deleteSelf(); */
+    /*         _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, phaseStatus ); */
+    /*     } */
+    /* } */
 
-    PhaseStatus getPhaseStatus() const
+    virtual PhaseStatus getPhaseStatus() const
     {
-        return *_phaseStatus;
+        return _phaseStatus;
     };
 
 protected:
@@ -314,6 +314,7 @@ protected:
     bool _constraintActive;
     PhaseStatus _phaseStatus;
 
+    Map<unsigned, double> _assignment;
     Map<unsigned, double> _lowerBounds;
     Map<unsigned, double> _upperBounds;
 
@@ -340,10 +341,10 @@ protected:
         _phaseStatus = phase;
     };
 
-    PhaseStatus getPhaseStatus() const
-    {
-        return _phaseStatus;
-    };
+    /* PhaseStatus getPhaseStatus() const */
+    /* { */
+    /*     return _phaseStatus; */
+    /* }; */
 
 /*    void reinitializeCDOs()
     {

@@ -49,7 +49,7 @@ public:
     /*
       Restore the state of this constraint from the given one.
     */
-    void restoreState( const PiecewiseLinearConstraint *state ) override;
+    // void restoreState( const PiecewiseLinearConstraint *state ) override;
 
     /*
       Register/unregister the constraint with a talbeau.
@@ -149,7 +149,7 @@ public:
       satisfied or inactive, and should be non-empty otherwise. Minimizing the returned
       equation should then lead to the constraint being "closer to satisfied".
     */
-    virtual void getCostFunctionComponent( Map<unsigned, double> &cost ) const override;
+    virtual void getCostFunctionComponent( Map<unsigned, double> &cost ) const;
 
     /*
       Returns string with shape: disjunction, _f, _b

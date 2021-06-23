@@ -66,18 +66,18 @@ ContextDependentPiecewiseLinearConstraint *SignConstraint::duplicateConstraint()
     return clone;
 }
 
-void SignConstraint::restoreState( const PiecewiseLinearConstraint *state )
-{
-    const SignConstraint *sign = dynamic_cast<const SignConstraint *>( state );
+// void SignConstraint::restoreState( const PiecewiseLinearConstraint *state )
+// {
+//     const SignConstraint *sign = dynamic_cast<const SignConstraint *>( state );
 
-    CVC4::context::CDO<bool> *activeStatus = _cdConstraintActive;
-    CVC4::context::CDO<PhaseStatus> *phaseStatus = _cdPhaseStatus;
-    CVC4::context::CDList<PhaseStatus> *infeasibleCases = _cdInfeasibleCases;
-    *this = *sign;
-    _cdConstraintActive = activeStatus;
-    _cdPhaseStatus = phaseStatus;
-    _cdInfeasibleCases = infeasibleCases;
-}
+//     CVC4::context::CDO<bool> *activeStatus = _cdConstraintActive;
+//     CVC4::context::CDO<PhaseStatus> *phaseStatus = _cdPhaseStatus;
+//     CVC4::context::CDList<PhaseStatus> *infeasibleCases = _cdInfeasibleCases;
+//     *this = *sign;
+//     _cdConstraintActive = activeStatus;
+//     _cdPhaseStatus = phaseStatus;
+//     _cdInfeasibleCases = infeasibleCases;
+// }
 
 void SignConstraint::registerAsWatcher( ITableau *tableau )
 {
@@ -108,7 +108,7 @@ bool SignConstraint::satisfied() const
 
 List<PiecewiseLinearCaseSplit> SignConstraint::getCaseSplits() const
 {
-    if ( *_phaseStatus != PHASE_NOT_FIXED )
+    if ( getPhaseStatus() != PHASE_NOT_FIXED )
         throw MarabouError( MarabouError::REQUESTED_CASE_SPLITS_FROM_FIXED_CONSTRAINT );
 
     List <PiecewiseLinearCaseSplit> splits;
@@ -181,14 +181,14 @@ PiecewiseLinearCaseSplit SignConstraint::getPositiveSplit() const
 
 bool SignConstraint::phaseFixed() const
 {
-    return *_phaseStatus != PHASE_NOT_FIXED;
+    return getPhaseStatus() != PHASE_NOT_FIXED;
 }
 
 PiecewiseLinearCaseSplit SignConstraint::getImpliedCaseSplit() const
 {
-    ASSERT( *_phaseStatus != PHASE_NOT_FIXED );
+    ASSERT( getPhaseStatus() != PHASE_NOT_FIXED );
 
-    if ( *_phaseStatus == PhaseStatus::SIGN_PHASE_POSITIVE )
+    if ( getPhaseStatus() == PhaseStatus::SIGN_PHASE_POSITIVE )
         return getPositiveSplit();
 
     return getNegativeSplit();
@@ -359,22 +359,22 @@ void SignConstraint::eliminateVariable( __attribute__((unused)) unsigned variabl
 
                   if ( FloatUtils::areEqual( fixedValue, 1 ) )
                   {
-                      ASSERT( *_phaseStatus != SIGN_PHASE_NEGATIVE );
+                      ASSERT( getPhaseStatus() != SIGN_PHASE_NEGATIVE );
                   }
                   else if (FloatUtils::areEqual( fixedValue, -1 ) )
                   {
-                      ASSERT( *_phaseStatus != SIGN_PHASE_POSITIVE );
+                      ASSERT( getPhaseStatus() != SIGN_PHASE_POSITIVE );
                   }
               }
               else if ( variable == _b )
               {
                   if ( FloatUtils::gte( fixedValue, 0 ) )
                   {
-                      ASSERT( *_phaseStatus != SIGN_PHASE_NEGATIVE );
+                      ASSERT( getPhaseStatus() != SIGN_PHASE_NEGATIVE );
                   }
                   else if ( FloatUtils::lt( fixedValue, 0 ) )
                   {
-                      ASSERT( *_phaseStatus != SIGN_PHASE_POSITIVE );
+                      ASSERT( getPhaseStatus() != SIGN_PHASE_POSITIVE );
                   }
               }
         });
@@ -395,10 +395,10 @@ unsigned SignConstraint::getF() const
 
 void SignConstraint::dump( String &output ) const
 {
-    PhaseStatus phase = *_phaseStatus;
+    PhaseStatus phase = getPhaseStatus();
     output = Stringf( "SignConstraint: x%u = Sign( x%u ). Active? %s. PhaseStatus = %u (%s). ",
                       _f, _b,
-                      *_constraintActive ? "Yes" : "No",
+                      isActive() ? "Yes" : "No",
                       phase, phaseToString( phase ).ascii()
                       );
 

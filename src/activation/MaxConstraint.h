@@ -58,7 +58,7 @@ class MaxConstraint : public ContextDependentPiecewiseLinearConstraint
     /*
       Restore the state of this constraint from the given one.
     */
-    void restoreState( const PiecewiseLinearConstraint *state ) override;
+    //void restoreState( const PiecewiseLinearConstraint *state ) override;
 
     /*
       Register/unregister the constraint with a talbeau.
@@ -179,6 +179,9 @@ private:
 
     double _maxLowerBound;
     bool _obsolete;
+    bool _eliminatedVariables;
+    double _maxValueOfEliminated;
+
 
     /*
        Functions that abstract away _maxIndex and _maxIndexSet, and use the

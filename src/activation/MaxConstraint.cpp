@@ -98,18 +98,18 @@ ContextDependentPiecewiseLinearConstraint *MaxConstraint::duplicateConstraint() 
     return clone;
 }
 
-void MaxConstraint::restoreState( const PiecewiseLinearConstraint *state )
-{
-    const MaxConstraint *max = dynamic_cast<const MaxConstraint *>( state );
+// void MaxConstraint::restoreState( const PiecewiseLinearConstraint *state )
+// {
+//     const MaxConstraint *max = dynamic_cast<const MaxConstraint *>( state );
 
-    CVC4::context::CDO<bool> *activeStatus = _cdConstraintActive;
-    CVC4::context::CDO<PhaseStatus> *phaseStatus = _cdPhaseStatus;
-    CVC4::context::CDList<PhaseStatus> *infeasibleCases = _cdInfeasibleCases;
-    *this = *max;
-    _cdConstraintActive = activeStatus;
-    _cdPhaseStatus = phaseStatus;
-    _cdInfeasibleCases = infeasibleCases;
-}
+//     CVC4::context::CDO<bool> *activeStatus = _cdConstraintActive;
+//     CVC4::context::CDO<PhaseStatus> *phaseStatus = _cdPhaseStatus;
+//     CVC4::context::CDList<PhaseStatus> *infeasibleCases = _cdInfeasibleCases;
+//     *this = *max;
+//     _cdConstraintActive = activeStatus;
+//     _cdPhaseStatus = phaseStatus;
+//     _cdInfeasibleCases = infeasibleCases;
+// }
 
 void MaxConstraint::registerAsWatcher( ITableau *tableau )
 {
@@ -362,62 +362,62 @@ void MaxConstraint::resetMaxIndex()
     ASSERT( !maxIndexSet() || FloatUtils::isFinite( maxValue ) );
 }
 
-List<PiecewiseLinearConstraint::Fix> MaxConstraint::getPossibleFixes() const
-{
-    ASSERT( !satisfied() );
-    ASSERT( _assignment.exists( _f ) && ( _assignment.size() > 1 || _eliminatedVariables ) );
+// List<PiecewiseLinearConstraint::Fix> MaxConstraint::getPossibleFixes() const
+// {
+//     ASSERT( !satisfied() );
+//     ASSERT( _assignment.exists( _f ) && ( _assignment.size() > 1 || _eliminatedVariables ) );
 
-    double fValue = _assignment.get( _f );
-    double maxVal = FloatUtils::max( _assignment.get( getMaxIndex() ), _maxValueOfEliminated );
+//     double fValue = _assignment.get( _f );
+//     double maxVal = FloatUtils::max( _assignment.get( getMaxIndex() ), _maxValueOfEliminated );
 
-    List<PiecewiseLinearConstraint::Fix> fixes;
+//     List<PiecewiseLinearConstraint::Fix> fixes;
 
-    // Possible violations
-    //	1. f is greater than maxVal
-    //	2. f is less than maxVal
-    //  3. f is greater than all variables except one
+//     // Possible violations
+//     //	1. f is greater than maxVal
+//     //	2. f is less than maxVal
+//     //  3. f is greater than all variables except one
 
-    if ( FloatUtils::gt( fValue, maxVal ) )
-    {
-        fixes.append( PiecewiseLinearConstraint::Fix( _f, maxVal ) );
-        for ( auto elem : _elements )
-            if ( !_cdInfeasibleCases || !isCaseInfeasible( elem ) )
-                fixes.append( PiecewiseLinearConstraint::Fix( elem, fValue ) );
-    }
-    else if ( FloatUtils::lt( fValue, maxVal ) )
-    {
-        fixes.append( PiecewiseLinearConstraint::Fix( _f, maxVal ) );
+//     if ( FloatUtils::gt( fValue, maxVal ) )
+//     {
+//         fixes.append( PiecewiseLinearConstraint::Fix( _f, maxVal ) );
+//         for ( auto elem : _elements )
+//             if ( !_cdInfeasibleCases || !isCaseInfeasible( elem ) )
+//                 fixes.append( PiecewiseLinearConstraint::Fix( elem, fValue ) );
+//     }
+//     else if ( FloatUtils::lt( fValue, maxVal ) )
+//     {
+//         fixes.append( PiecewiseLinearConstraint::Fix( _f, maxVal ) );
 
-        unsigned greaterVar;
-        unsigned numGreater = 0;
-        for ( auto element : _elements )
-        {
-            if ( _cdInfeasibleCases && !isCaseInfeasible( element ) )
-                continue;
+//         unsigned greaterVar;
+//         unsigned numGreater = 0;
+//         for ( auto element : _elements )
+//         {
+//             if ( _cdInfeasibleCases && !isCaseInfeasible( element ) )
+//                 continue;
 
-            if ( _assignment.exists( element ) && FloatUtils::gt( _assignment[element], fValue ) )
-            {
-                ++numGreater;
-                greaterVar = element;
-            }
-        }
-        if ( numGreater == 1 )
-        {
-            fixes.append( PiecewiseLinearConstraint::Fix( greaterVar, fValue ) );
-        }
-    }
+//             if ( _assignment.exists( element ) && FloatUtils::gt( _assignment[element], fValue ) )
+//             {
+//                 ++numGreater;
+//                 greaterVar = element;
+//             }
+//         }
+//         if ( numGreater == 1 )
+//         {
+//             fixes.append( PiecewiseLinearConstraint::Fix( greaterVar, fValue ) );
+//         }
+//     }
 
-    return fixes;
-}
+//     return fixes;
+// }
 
-List<PiecewiseLinearConstraint::Fix> MaxConstraint::getSmartFixes( ITableau * ) const
-{
-    ASSERT( !satisfied() );
-    ASSERT( _assignment.exists( _f ) && _assignment.size() > 1 );
+// List<PiecewiseLinearConstraint::Fix> MaxConstraint::getSmartFixes( ITableau * ) const
+// {
+//     ASSERT( !satisfied() );
+//     ASSERT( _assignment.exists( _f ) && _assignment.size() > 1 );
 
-    // TODO
-    return getPossibleFixes();
-}
+//     // TODO
+//     return getPossibleFixes();
+// }
 
 List<PhaseStatus> MaxConstraint::getAllCases() const
 {
@@ -571,7 +571,7 @@ bool MaxConstraint::constraintObsolete() const
     return _obsolete;
 }
 
-void MaxConstraint::eliminateVariable( unsigned var, double /*value*/ )
+void MaxConstraint::eliminateVariable( unsigned var, double value )
 {
     // First elimination does not remove number of cases, since it
     // simultaneously adds MAX_PHASE_ELIMINATED

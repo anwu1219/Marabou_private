@@ -79,6 +79,7 @@ public:
         cdoCleanup();
     }
 
+    virtual ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const=0;
     /*
       Turn the constraint on/off.
     */

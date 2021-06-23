@@ -65,7 +65,7 @@ public:
     /*
       Restore the state of this constraint from the given one.
     */
-    void restoreState( const PiecewiseLinearConstraint *state ) override;
+    //void restoreState( const PiecewiseLinearConstraint *state ) override;
 
     /*
       Register/unregister the constraint with a talbeau.
@@ -95,12 +95,12 @@ public:
     /*
       Returns a list of possible fixes for the violated constraint.
     */
-    List<PiecewiseLinearConstraint::Fix> getPossibleFixes() const override;
+    // List<PiecewiseLinearConstraint::Fix> getPossibleFixes() const override;
 
     /*
       Return a list of smart fixes for violated constraint.
     */
-    List<PiecewiseLinearConstraint::Fix> getSmartFixes( ITableau *tableau ) const override;
+    // List<PiecewiseLinearConstraint::Fix> getSmartFixes( ITableau *tableau ) const override;
 
     /*
       If the constraint's phase has been fixed, get the (valid) case split.
@@ -184,7 +184,7 @@ public:
   /*
     Update the preferred direction for fixing and handling case split
   */
-  void updateDirection() override;
+  //void updateDirection() override;
 
   PhaseStatus getDirection() const;
 
@@ -192,6 +192,8 @@ public:
 
 private:
     unsigned _b, _f;
+
+    PhaseStatus _direction;
 
     PiecewiseLinearCaseSplit getNegativeSplit() const;
     PiecewiseLinearCaseSplit getPositiveSplit() const;

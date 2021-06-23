@@ -29,7 +29,6 @@
 #include "ContextDependentPiecewiseLinearConstraint.h"
 #include "List.h"
 #include "Map.h"
-#include "PiecewiseLinearConstraint.h"
 #include <cmath>
 
 class ReluConstraint : public ContextDependentPiecewiseLinearConstraint
@@ -94,25 +93,25 @@ public:
     */
     PiecewiseLinearCaseSplit getValidCaseSplit() const override;
 
-                if ( *_phaseStatus == RELU_PHASE_ACTIVE && _boundManager )
-                    {
-                        if ( FloatUtils::isNegative( _boundManager->getLowerBound( _b ) ) )
-                            {
-                                printf( "x%u >= %f\n", _b, _boundManager->getLowerBound( _b ) );
-                                ASSERT( false );
-                            }
-                    }
-                if ( *_phaseStatus == RELU_PHASE_INACTIVE && _boundManager )
-                    {
-                        if ( FloatUtils::isPositive( _boundManager->getUpperBound( _b ) ) )
-                            {
-                                printf( "x%u <= %f\n", _b, _boundManager->getUpperBound( _b ) );
-                                ASSERT( false );
-                            }
-                    }
-            });
-        return *_phaseStatus != PHASE_NOT_FIXED;
-    }
+    /*             if ( getPhaseStatus() == RELU_PHASE_ACTIVE && _boundManager ) */
+    /*                 { */
+    /*                     if ( FloatUtils::isNegative( _boundManager->getLowerBound( _b ) ) ) */
+    /*                         { */
+    /*                             printf( "x%u >= %f\n", _b, _boundManager->getLowerBound( _b ) ); */
+    /*                             ASSERT( false ); */
+    /*                         } */
+    /*                 } */
+    /*             if ( getPhaseStatus() == RELU_PHASE_INACTIVE && _boundManager ) */
+    /*                 { */
+    /*                     if ( FloatUtils::isPositive( _boundManager->getUpperBound( _b ) ) ) */
+    /*                         { */
+    /*                             printf( "x%u <= %f\n", _b, _boundManager->getUpperBound( _b ) ); */
+    /*                             ASSERT( false ); */
+    /*                         } */
+    /*                 } */
+    /*         }); */
+    /*     return getPhaseStatus() != PHASE_NOT_FIXED; */
+    /* } */
 
     /*
        Returns a list of all cases - { RELU_ACTIVE, RELU_INACTIVE}
@@ -171,7 +170,7 @@ public:
       satisfied or inactive, and should be non-empty otherwise. Minimizing the returned
       equation should then lead to the constraint being "closer to satisfied".
     */
-    virtual void getCostFunctionComponent( Map<unsigned, double> &cost ) const override;
+    virtual void getCostFunctionComponent( Map<unsigned, double> &cost ) const;
 
     /*
       Returns string with shape: relu, _f, _b
@@ -211,7 +210,7 @@ public:
     /*
       Update the preferred direction for fixing and handling case split
     */
-    void updateDirection() override;
+    // void updateDirection() override;
 
 
     PhaseStatus getDirection() const;
@@ -232,6 +231,8 @@ private:
     unsigned _b, _f;
     bool _auxVarInUse;
     unsigned _aux;
+
+    PhaseStatus _direction;
 
     PiecewiseLinearCaseSplit getInactiveSplit() const;
     PiecewiseLinearCaseSplit getActiveSplit() const;

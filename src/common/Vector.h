@@ -58,6 +58,12 @@ public:
         _container.assign( size, value );
     }
 
+    template< class InputIt >
+    void assign( InputIt first, InputIt last )
+    {
+        _container.assign( first, last );
+    }
+
     virtual void append( T value )
     {
         _container.push_back( value );
