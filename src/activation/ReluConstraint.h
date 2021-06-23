@@ -26,12 +26,12 @@
 #ifndef __ReluConstraint_h__
 #define __ReluConstraint_h__
 
-#include "ContextDependentPiecewiseLinearConstraint.h"
+#include "PiecewiseLinearConstraint.h"
 #include "List.h"
 #include "Map.h"
 #include <cmath>
 
-class ReluConstraint : public ContextDependentPiecewiseLinearConstraint
+class ReluConstraint : public PiecewiseLinearConstraint
 {
 public:
     /*
@@ -49,7 +49,7 @@ public:
     /*
       Return a clone of the constraint.
     */
-    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
+    PiecewiseLinearConstraint *duplicateConstraint() const override;
 
     /*
       Register/unregister the constraint with a talbeau.

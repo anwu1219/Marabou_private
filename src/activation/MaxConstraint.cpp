@@ -47,7 +47,7 @@
 #endif
 
 MaxConstraint::MaxConstraint( unsigned f, const Set<unsigned> &elements )
-    : ContextDependentPiecewiseLinearConstraint( elements.size() )
+    : PiecewiseLinearConstraint( elements.size() )
     , _f( f )
 	, _elements( elements )
 	, _initialElements( elements )
@@ -88,7 +88,7 @@ PiecewiseLinearFunctionType MaxConstraint::getType() const
     return PiecewiseLinearFunctionType::MAX;
 }
 
-ContextDependentPiecewiseLinearConstraint *MaxConstraint::duplicateConstraint() const
+PiecewiseLinearConstraint *MaxConstraint::duplicateConstraint() const
 {
     MaxConstraint *clone = new MaxConstraint( _f, _elements );
     *clone = *this;
@@ -322,7 +322,7 @@ bool MaxConstraint::satisfied() const
 
 bool MaxConstraint::isCaseInfeasible( unsigned variable ) const
 {
-    return ContextDependentPiecewiseLinearConstraint::isCaseInfeasible( variableToPhase( variable ) );
+    return PiecewiseLinearConstraint::isCaseInfeasible( variableToPhase( variable ) );
 }
 
 void MaxConstraint::resetMaxIndex()

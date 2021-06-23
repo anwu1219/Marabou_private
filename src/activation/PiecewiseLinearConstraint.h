@@ -25,6 +25,11 @@
 #include "PiecewiseLinearFunctionType.h"
 #include "Queue.h"
 #include "Tightening.h"
+#include "context/cdlist.h"
+#include "context/cdo.h"
+#include "context/context.h"
+
+
 
 class Equation;
 class IConstraintBoundTightener;
@@ -33,6 +38,8 @@ class InputQuery;
 class String;
 
 #define PLConstraint_LOG(x, ...) LOG(GlobalConfiguration::PLCONSTRAINT_LOGGING, "PLConstraint: %s\n", x)
+
+#define TWO_PHASE_PIECEWISE_LINEAR_CONSTRAINT 2u
 
 enum PhaseStatus : unsigned {
     PHASE_NOT_FIXED = 0,
@@ -77,7 +84,12 @@ public:
     };
 
     PiecewiseLinearConstraint();
-    virtual ~PiecewiseLinearConstraint() {};
+    PiecewiseLinearConstraint( unsigned numCases );
+
+    virtual ~PiecewiseLinearConstraint()
+    {
+        cdoCleanup();
+    };
 
     bool operator<( const PiecewiseLinearConstraint &other ) const
     {
@@ -106,15 +118,8 @@ public:
     /*
       Turn the constraint on/off.
     */
-    virtual void setActiveConstraint( bool active )
-    {
-        _constraintActive = active;
-    }
-
-    virtual bool isActive() const
-    {
-        return _constraintActive;
-    }
+    void setActiveConstraint( bool active );
+    bool isActive() const;
 
     /*
       Returns true iff the variable participates in this piecewise
@@ -141,14 +146,30 @@ public:
     virtual List<PiecewiseLinearCaseSplit> getCaseSplits() const = 0;
 
     /*
-      Check if the constraint's phase has been fixed.
-    */
-    virtual bool phaseFixed() const = 0;
+       Returns a list of all cases of this constraint and is used by the
+       nextFeasibleCase during search. The order of returned cases affects the
+       search, and this method is where related heuristics should be
+       implemented.
+     */
+    virtual List<PhaseStatus> getAllCases() const = 0;
+
+    /*
+       Returns case split corresponding to the given phase/id
+       TODO: Update the signature in PiecewiseLinearConstraint, once the new
+       search is integrated.
+     */
+    virtual PiecewiseLinearCaseSplit getCaseSplit( PhaseStatus caseId ) const = 0;
 
     /*
       If the constraint's phase has been fixed, get the (valid) case split.
     */
+    virtual PiecewiseLinearCaseSplit getImpliedCaseSplit() const = 0;
     virtual PiecewiseLinearCaseSplit getValidCaseSplit() const = 0;
+
+    /*
+      Check if the constraint's phase has been fixed.
+    */
+    virtual bool phaseFixed() const = 0;
 
     /*
       Dump the current state of the constraint.
@@ -270,44 +291,99 @@ public:
 
     virtual void extractVariableValueFromGurobi( LPSolver & ){};
 
-    /* void registerBoundManager( BoundManager *boundManager ) */
-    /* { */
-    /*     _boundManager = boundManager; */
-    /* } */
-
     void registerGurobi( LPSolver *gurobi )
     {
         _gurobi = gurobi;
     }
 
-    /* void initializeCDOs( CVC4::context::Context *context ) */
-    /* { */
-    /*     if ( _context == NULL ) */
-    /*     { */
-    /*         ASSERT( NULL == _context ); */
-    /*         ASSERT( NULL == _constraintActive ); */
-    /*         ASSERT( NULL == _phaseStatus ); */
-    /*         _context = context; */
-    /*         _constraintActive = new (true) CVC4::context::CDO<bool>( _context, true ); */
-    /*         _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, PHASE_NOT_FIXED ); */
-    /*     } */
-    /*     else */
-    /*     { */
-    /*         _context = context; */
-    /*         bool constraintActive = *_constraintActive; */
-    /*         _constraintActive->deleteSelf(); */
-    /*         _constraintActive = new (true) CVC4::context::CDO<bool>( _context, constraintActive ); */
-    /*         PhaseStatus phaseStatus = *_phaseStatus; */
-    /*         _phaseStatus->deleteSelf(); */
-    /*         _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, phaseStatus ); */
-    /*     } */
-    /* } */
+    /*
+      Register a bound manager. If a bound manager is registered,
+      this piecewise linear constraint will inform the tightener whenever
+      it discovers a tighter (entailed) bound.
+    */
+    void registerBoundManager( BoundManager *boundManager );
 
-    virtual PhaseStatus getPhaseStatus() const
+    /*
+       Register context object. Necessary for lazy backtracking features - such
+       as _cdPhaseStatus and _activeStatus. Does not require initialization until
+       after pre-processing.
+     */
+    void initializeCDOs( CVC4::context::Context *context );
+
+    /*
+       Politely clean up allocated CDOs.
+     */
+    void cdoCleanup();
+
+    /*
+      Get the context object - debugging purposes only
+    */
+    const CVC4::context::Context *getContext() const
     {
-        return _phaseStatus;
+        return _context;
+    }
+
+    /*
+      Get the active status object - debugging purposes only
+    */
+    const CVC4::context::CDO<bool> *getActiveStatusCDO() const
+    {
+        return _cdConstraintActive;
     };
 
+    /*
+      Get the current phase status object - debugging purposes only
+    */
+    const CVC4::context::CDO<PhaseStatus> *getPhaseStatusCDO() const
+    {
+        return _cdPhaseStatus;
+    }
+
+    /*
+      Get the infeasible cases object - debugging purposes only
+    */
+    const CVC4::context::CDList<PhaseStatus> *getInfeasibleCasesCDList() const
+    {
+        return _cdInfeasibleCases;
+    }
+
+    /*
+       Mark that an exploredCase is infeasible, reducing the remaining search space.
+     */
+    void markInfeasible( PhaseStatus exploredCase );
+
+    /*
+      Returns phaseStatus representing next feasible case.
+      Returns CONSTRAINT_INFEASIBLE if no feasible case exists.
+      Assumes the contraint phase is PHASE_NOT_FIXED.
+      Worst case complexity O(n^2)
+      This method is overloaded in MAX and DISJUNCTION constraints.
+     */
+    virtual PhaseStatus nextFeasibleCase();
+
+    /*
+       Returns number of cases not yet marked as infeasible.
+     */
+    unsigned numFeasibleCases() const
+    {
+        return _numCases - _cdInfeasibleCases->size();
+    }
+
+    /*
+        Returns true if there are feasible cases remaining.
+     */
+    bool isFeasible() const
+    {
+        return numFeasibleCases() > 0u;
+    }
+
+    /*
+       Returns true if there is only one feasible case remaining.
+     */
+    virtual bool isImplication() const
+    {
+        return numFeasibleCases() == 1u;
+    }
 protected:
     LPSolver *_gurobi;
 
@@ -317,6 +393,25 @@ protected:
     Map<unsigned, double> _assignment;
     Map<unsigned, double> _lowerBounds;
     Map<unsigned, double> _upperBounds;
+
+    unsigned _numCases; // Number of possible cases/phases for this constraint
+                        // (e.g. 2 for ReLU, ABS, SIGN; >=2 for Max and Disjunction )
+
+    BoundManager *_boundManager; // Pointer to a centralized object to store bounds.
+    CVC4::context::Context *_context;
+    CVC4::context::CDO<bool> *_cdConstraintActive;
+
+    /* ReluConstraint and AbsoluteValueConstraint use PhaseStatus enumeration.
+       MaxConstraint and Disjunction interpret the PhaseStatus value as the case
+       number (counts from 1, value 0 is reserved and used as PHASE_NOT_FIXED).
+    */
+    CVC4::context::CDO<PhaseStatus> *_cdPhaseStatus;
+
+    /*
+      Store infeasible cases under the current trail. Backtracks with context.
+    */
+    CVC4::context::CDList<PhaseStatus> *_cdInfeasibleCases;
+
 
     /*
       The score denotes priority for splitting. When score is negative, the PL constraint
@@ -333,34 +428,34 @@ protected:
     PhaseStatus _phaseOfHeuristicCost;
 
     /*
-      Set the phase status of the constraint. Uses the global PhaseStatus
-      enumeration and is initialized to PHASE_NOT_FIXED for all constraints.
+      Initialize CDOs.
+    */
+    void initializeCDActiveStatus();
+    void initializeCDPhaseStatus();
+    void initializeCDInfeasibleCases();
+
+    /*
+       Method provided to allow safe copying of the context-dependent members,
+       which will be freshly initialized in a copy and with the same values.
      */
-    void setPhaseStatus( PhaseStatus phase )
-    {
-        _phaseStatus = phase;
-    };
+    void initializeDuplicateCDOs( PiecewiseLinearConstraint *clone ) const;
 
-    /* PhaseStatus getPhaseStatus() const */
-    /* { */
-    /*     return _phaseStatus; */
-    /* }; */
+    /*
+       Private method to check if a case is infeasible.
+     */
+    bool isCaseInfeasible( PhaseStatus phase ) const;
 
-/*    void reinitializeCDOs()
-    {
-        if ( _context == nullptr )
-        {
-            return;
-        }
-        ASSERT( nullptr != _context );
-        ASSERT( nullptr != _constraintActive );
-        ASSERT( nullptr != _phaseStatus );
+    /*
+       Method to set PhaseStatus of the constraint. Encapsulates both context
+       dependent and context-less behavior.
+     */
+    void setPhaseStatus( PhaseStatus phaseStatus );
 
-        bool constraintActive = *_constraintActive;
-        _constraintActive = new (true) CVC4::context::CDO<bool>( _context, constraintActive );
-        PhaseStatus phaseStatus = *_phaseStatus;
-        _phaseStatus = new (true) CVC4::context::CDO<PhaseStatus>( _context, phaseStatus );
-    };*/
+    /*
+       Method to get PhaseStatus of the constraint. Encapsulates both context
+       dependent and context-less behavior.
+     */
+    PhaseStatus getPhaseStatus() const;
 
 };
 

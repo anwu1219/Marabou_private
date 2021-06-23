@@ -26,9 +26,9 @@
 #define __DisjunctionConstraint_h__
 
 #include "Vector.h"
-#include "ContextDependentPiecewiseLinearConstraint.h"
+#include "PiecewiseLinearConstraint.h"
 
-class DisjunctionConstraint : public ContextDependentPiecewiseLinearConstraint
+class DisjunctionConstraint : public PiecewiseLinearConstraint
 {
 public:
     ~DisjunctionConstraint() {};
@@ -44,7 +44,7 @@ public:
     /*
       Return a clone of the constraint.
     */
-    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
+    PiecewiseLinearConstraint *duplicateConstraint() const override;
 
     /*
       Restore the state of this constraint from the given one.

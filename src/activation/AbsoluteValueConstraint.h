@@ -26,9 +26,9 @@
 #ifndef __AbsoluteValueConstraint_h__
 #define __AbsoluteValueConstraint_h__
 
-#include "ContextDependentPiecewiseLinearConstraint.h"
+#include "PiecewiseLinearConstraint.h"
 
-class AbsoluteValueConstraint : public ContextDependentPiecewiseLinearConstraint
+class AbsoluteValueConstraint : public PiecewiseLinearConstraint
 {
 
 public:

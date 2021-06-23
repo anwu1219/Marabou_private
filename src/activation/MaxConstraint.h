@@ -29,11 +29,11 @@
 #define __MaxConstraint_h__
 
 #include "Map.h"
-#include "ContextDependentPiecewiseLinearConstraint.h"
+#include "PiecewiseLinearConstraint.h"
 
 #define MAX_VARIABLE_TO_PHASE_OFFSET 1
 
-class MaxConstraint : public ContextDependentPiecewiseLinearConstraint
+class MaxConstraint : public PiecewiseLinearConstraint
 {
  public:
     ~MaxConstraint();
@@ -53,7 +53,7 @@ class MaxConstraint : public ContextDependentPiecewiseLinearConstraint
     /*
       Return a clone of the constraint.
     */
-    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
+    PiecewiseLinearConstraint *duplicateConstraint() const override;
 
     /*
       Restore the state of this constraint from the given one.

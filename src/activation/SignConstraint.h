@@ -27,9 +27,9 @@
 #define __SignConstraint_h__
 
 #include "Map.h"
-#include "ContextDependentPiecewiseLinearConstraint.h"
+#include "PiecewiseLinearConstraint.h"
 
-class SignConstraint : public ContextDependentPiecewiseLinearConstraint
+class SignConstraint : public PiecewiseLinearConstraint
 {
 public:
     /*
@@ -60,7 +60,7 @@ public:
     /*
       Return a clone of the constraint.
     */
-    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
+    PiecewiseLinearConstraint *duplicateConstraint() const override;
 
     /*
       Restore the state of this constraint from the given one.

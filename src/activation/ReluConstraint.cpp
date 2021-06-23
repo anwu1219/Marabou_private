@@ -14,7 +14,7 @@
 
 #include "ReluConstraint.h"
 
-#include "ContextDependentPiecewiseLinearConstraint.h"
+#include "PiecewiseLinearConstraint.h"
 #include "Debug.h"
 #include "DivideStrategy.h"
 #include "FloatUtils.h"
@@ -36,7 +36,7 @@
 #endif
 
 ReluConstraint::ReluConstraint( unsigned b, unsigned f )
-    : ContextDependentPiecewiseLinearConstraint( TWO_PHASE_PIECEWISE_LINEAR_CONSTRAINT )
+    : PiecewiseLinearConstraint( TWO_PHASE_PIECEWISE_LINEAR_CONSTRAINT )
     , _b( b )
     , _f( f )
     , _auxVarInUse( false )
@@ -83,7 +83,7 @@ PiecewiseLinearFunctionType ReluConstraint::getType() const
     return PiecewiseLinearFunctionType::RELU;
 }
 
-ContextDependentPiecewiseLinearConstraint *ReluConstraint::duplicateConstraint() const
+PiecewiseLinearConstraint *ReluConstraint::duplicateConstraint() const
 {
     ReluConstraint *clone = new ReluConstraint( _b, _f );
     *clone = *this;
