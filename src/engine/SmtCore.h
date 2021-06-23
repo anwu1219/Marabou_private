@@ -68,6 +68,8 @@ public:
         return _needToSplit;
     }
 
+    void requestSplit();
+
     /*
       Perform the split according to the constraint marked for
       splitting. Update bounds, add equations and update the stack.

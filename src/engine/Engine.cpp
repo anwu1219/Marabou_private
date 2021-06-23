@@ -299,6 +299,10 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
             {
                 performBoundTightening();
                 splitJustPerformed = false;
+                for ( const auto &disjunction : _disjunctionConstraints )
+                    if ( disjunction->isActive() && !disjunction->phaseFixed() )
+                        _smtCore.requestSplit();
+
                 informLPSolverOfBounds();
 
                 DEBUG({ checkBoundConsistency(); });
@@ -989,7 +993,8 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
     ENGINE_LOG( "Applying a split. " );
 
     const List<Tightening> &bounds = split.getBoundTightenings();
-    ASSERT( split.getEquations().size() == 0 );
+    if ( split.getEquations().size() > 0 )
+        throw MarabouError( MarabouError::FEATURE_NOT_YET_SUPPORTED, "Split can only be bounds" );
 
     for ( auto &bound : bounds )
     {

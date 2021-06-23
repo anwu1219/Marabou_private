@@ -159,6 +159,7 @@ bool loadProperty(InputQuery &inputQuery, std::string propertyFilePath){
 void addDisjunctionConstraint(InputQuery& ipq, const std::list<std::list<Equation>>
                               &disjuncts ){
     List<PiecewiseLinearCaseSplit> disjunctList;
+    unsigned numAux = 0;
     for ( const auto &disjunct : disjuncts )
     {
         PiecewiseLinearCaseSplit split;
@@ -187,7 +188,25 @@ void addDisjunctionConstraint(InputQuery& ipq, const std::list<std::list<Equatio
             }
             else
             {
-                split.addEquation( eq );
+                double scalar = eq._scalar;
+                Equation::EquationType type = eq._type;
+
+                unsigned auxVar = ipq.getNumberOfVariables();
+                ipq.setNumberOfVariables( auxVar + 1 );
+                Equation neq = eq;
+                neq.setType( Equation::EQ );
+                neq.addAddend( -1, auxVar );
+                neq.setScalar( 0 );
+                ipq.addEquation( neq );
+                if ( type == Equation::EQ )
+                {
+                    split.storeBoundTightening( Tightening( auxVar, scalar, Tightening::LB ) );
+                    split.storeBoundTightening( Tightening( auxVar, scalar, Tightening::UB ) );
+                }
+                else if ( type == Equation::GE )
+                    split.storeBoundTightening( Tightening( auxVar, scalar, Tightening::LB ) );
+                else if ( type == Equation::LE )
+                    split.storeBoundTightening( Tightening( auxVar, scalar, Tightening::UB ) );
             }
         }
         disjunctList.append( split );

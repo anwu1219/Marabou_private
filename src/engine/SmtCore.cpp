@@ -82,6 +82,20 @@ void SmtCore::reportRandomFlip()
 
 }
 
+void SmtCore::requestSplit()
+{
+    struct timespec start = TimeUtils::sampleMicro();
+    _needToSplit = true;
+    pickSplitPLConstraint();
+
+    if ( _statistics )
+    {
+        struct timespec end = TimeUtils::sampleMicro();
+        _statistics->incLongAttr( Statistics::TIME_BRANCHING_HEURISTICS_MICRO,
+                                  TimeUtils::timePassed( start, end ) );
+    }
+}
+
 void SmtCore::performSplit()
 {
     struct timespec start = TimeUtils::sampleMicro();

@@ -14,6 +14,7 @@
 
 #include "Debug.h"
 #include "DisjunctionConstraint.h"
+#include "InfeasibleQueryException.h"
 #include "MStringf.h"
 #include "MarabouError.h"
 #include "Statistics.h"
@@ -117,20 +118,26 @@ void DisjunctionConstraint::unregisterAsWatcher( ITableau *tableau )
 
 void DisjunctionConstraint::notifyLowerBound( unsigned variable, double bound )
 {
-    if ( _lowerBounds.exists( variable ) && !FloatUtils::gt( bound, _lowerBounds[variable] ) )
-        return;
-
-    _lowerBounds[variable] = bound;
+    if ( !_boundManager )
+    {
+        if ( _lowerBounds.exists( variable ) && !FloatUtils::gt( bound, _lowerBounds[variable] ) )
+            return;
+        else
+            _lowerBounds[variable] = bound;
+    }
 
     updateFeasibleDisjuncts();
 }
 
 void DisjunctionConstraint::notifyUpperBound( unsigned variable, double bound )
 {
-    if ( _upperBounds.exists( variable ) && !FloatUtils::lt( bound, _upperBounds[variable] ) )
-        return;
-
-    _upperBounds[variable] = bound;
+    if ( !_boundManager )
+    {
+        if ( _upperBounds.exists( variable ) && !FloatUtils::lt( bound, _upperBounds[variable] ) )
+            return;
+        else
+            _upperBounds[variable] = bound;
+    }
 
     updateFeasibleDisjuncts();
 }
@@ -294,32 +301,51 @@ bool DisjunctionConstraint::disjunctSatisfied( const PiecewiseLinearCaseSplit & 
 void DisjunctionConstraint::updateFeasibleDisjuncts()
 {
     _feasibleDisjuncts.clear();
-
     for ( const auto &disjunct : _disjuncts )
     {
         if ( disjunctIsFeasible( disjunct ) )
             _feasibleDisjuncts.append( disjunct );
     }
+    if ( _feasibleDisjuncts.size() == 0 )
+        throw InfeasibleQueryException();
 }
 
 bool DisjunctionConstraint::disjunctIsFeasible( const PiecewiseLinearCaseSplit &disjunct ) const
 {
-    for ( const auto &bound : disjunct.getBoundTightenings() )
+    if ( !_boundManager )
     {
-        if ( bound._type == Tightening::LB )
+        for ( const auto &bound : disjunct.getBoundTightenings() )
         {
-            if ( _upperBounds.exists( bound._variable ) &&
-                 _upperBounds[bound._variable] < bound._value )
-                return false;
-        }
-        else
-        {
-            if ( _lowerBounds.exists( bound._variable ) &&
-                 _lowerBounds[bound._variable] > bound._value )
-                return false;
+            if ( bound._type == Tightening::LB )
+            {
+                if ( _upperBounds.exists( bound._variable ) &&
+                     _upperBounds[bound._variable] < bound._value )
+                    return false;
+            }
+            else
+            {
+                if ( _lowerBounds.exists( bound._variable ) &&
+                     _lowerBounds[bound._variable] > bound._value )
+                    return false;
+            }
         }
     }
-
+    else
+    {
+        for ( const auto &bound : disjunct.getBoundTightenings() )
+        {
+            if ( bound._type == Tightening::LB )
+            {
+                if ( _boundManager->getUpperBound( bound._variable ) < bound._value )
+                    return false;
+            }
+            else
+            {
+                if ( _boundManager->getLowerBound( bound._variable ) > bound._value )
+                    return false;
+            }
+        }
+    }
     return true;
 }
 
