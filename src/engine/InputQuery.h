@@ -16,6 +16,7 @@
 #ifndef __InputQuery_h__
 #define __InputQuery_h__
 
+#include "DisjunctionConstraint.h"
 #include "Equation.h"
 #include "List.h"
 #include "MString.h"
@@ -49,8 +50,16 @@ public:
     void removeEquationsByIndex( const Set<unsigned> indices );
 
     void addPiecewiseLinearConstraint( PiecewiseLinearConstraint *constraint );
-    const List<PiecewiseLinearConstraint *> &getPiecewiseLinearConstraints() const;
+    void addDisjunctionConstraint( DisjunctionConstraint *constraint )
+    {
+        _disjunctionConstraints.append(constraint);
+    }
     List<PiecewiseLinearConstraint *> &getPiecewiseLinearConstraints();
+    const List<PiecewiseLinearConstraint *> &getPiecewiseLinearConstraints() const;
+    List<DisjunctionConstraint *> &getDisjunctionConstraints()
+    {
+        return _disjunctionConstraints;
+    }
 
     /*
       Methods for handling input and output variables
@@ -140,6 +149,7 @@ private:
     Map<unsigned, double> _lowerBounds;
     Map<unsigned, double> _upperBounds;
     List<PiecewiseLinearConstraint *> _plConstraints;
+    List<DisjunctionConstraint *> _disjunctionConstraints;
 
     Map<unsigned, double> _solution;
 

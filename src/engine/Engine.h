@@ -223,6 +223,8 @@ private:
     */
     List<PiecewiseLinearConstraint *> _plConstraints;
 
+    List<DisjunctionConstraint *> _disjunctionConstraints;
+
     /*
       Piecewise linear constraints that are currently violated.
     */

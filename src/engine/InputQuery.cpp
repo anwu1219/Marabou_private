@@ -148,6 +148,9 @@ double InputQuery::getSolutionValue( unsigned variable ) const
 void InputQuery::addPiecewiseLinearConstraint( PiecewiseLinearConstraint *constraint )
 {
     _plConstraints.append( constraint );
+    if ( constraint->getType() == DISJUNCTION )
+        addDisjunctionConstraint( (DisjunctionConstraint *) constraint );
+
 }
 
 List<PiecewiseLinearConstraint *> &InputQuery::getPiecewiseLinearConstraints()
@@ -265,6 +268,7 @@ InputQuery &InputQuery::operator=( const InputQuery &other )
                 std::cout << s.ascii() << std::endl;
                 auto *newPlc = constraint->duplicateConstraint();
                 _plConstraints.append( newPlc );
+                _disjunctionConstraints.append( (DisjunctionConstraint *) newPlc );
                 ++numberOfDisjunctions;
             }
             else if ( constraint->getType() == MAX &&

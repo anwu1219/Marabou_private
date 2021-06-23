@@ -827,6 +827,8 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             printInputBounds( inputQuery );
 
         _plConstraints = _preprocessedQuery.getPiecewiseLinearConstraints();
+        _disjunctionConstraints = _preprocessedQuery.getDisjunctionConstraints();
+
         _heuristicCostManager.setPLConstraints( _plConstraints );
 
         if ( _constructTableau )
@@ -1367,27 +1369,34 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraint()
     ENGINE_LOG( Stringf( "Picking a split PLConstraint..." ).ascii() );
 
     PiecewiseLinearConstraint *candidatePLConstraint = NULL;
-    if ( _splittingStrategy == DivideStrategy::EarliestReLU )
-        candidatePLConstraint = pickSplitPLConstraintBasedOnTopology();
-    else if ( _splittingStrategy == DivideStrategy::Polarity )
-        candidatePLConstraint = pickSplitPLConstraintBasedOnPolarity();
-    else if ( _splittingStrategy == DivideStrategy::SOI )
-        candidatePLConstraint = pickSplitPLConstraintBasedOnSOI();
-    else if ( _splittingStrategy == DivideStrategy::SOIPolarity )
-        candidatePLConstraint = pickSplitPLConstraintBasedOnPolaritySOI();
+    for ( const auto &disjunction : _disjunctionConstraints )
+        if ( disjunction->isActive() && !disjunction->phaseFixed() )
+            candidatePLConstraint = disjunction;
 
-    else if ( _splittingStrategy == DivideStrategy::LargestInterval )
+    if ( candidatePLConstraint == NULL )
     {
-        // Conduct interval splitting periodically.
-        if ( _smtCore.getStackDepth() %
-             GlobalConfiguration::INTERVAL_SPLITTING_FREQUENCY == 0 )
-            candidatePLConstraint = pickSplitPLConstraintBasedOnIntervalWidth();
-        else
+        if ( _splittingStrategy == DivideStrategy::EarliestReLU )
             candidatePLConstraint = pickSplitPLConstraintBasedOnTopology();
-    }
-    else
-    {
-        ASSERT( false );
+        else if ( _splittingStrategy == DivideStrategy::Polarity )
+            candidatePLConstraint = pickSplitPLConstraintBasedOnPolarity();
+        else if ( _splittingStrategy == DivideStrategy::SOI )
+            candidatePLConstraint = pickSplitPLConstraintBasedOnSOI();
+        else if ( _splittingStrategy == DivideStrategy::SOIPolarity )
+            candidatePLConstraint = pickSplitPLConstraintBasedOnPolaritySOI();
+
+        else if ( _splittingStrategy == DivideStrategy::LargestInterval )
+        {
+            // Conduct interval splitting periodically.
+            if ( _smtCore.getStackDepth() %
+                 GlobalConfiguration::INTERVAL_SPLITTING_FREQUENCY == 0 )
+                candidatePLConstraint = pickSplitPLConstraintBasedOnIntervalWidth();
+            else
+                candidatePLConstraint = pickSplitPLConstraintBasedOnTopology();
+        }
+        else
+        {
+            ASSERT( false );
+        }
     }
     ENGINE_LOG( Stringf( ( candidatePLConstraint ?
                            "Picked..." :
