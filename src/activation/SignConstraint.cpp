@@ -16,7 +16,7 @@
 
 #include "Debug.h"
 #include "FloatUtils.h"
-#include "ITableau.h"
+//#include "ITableau.h"
 #include "MStringf.h"
 #include "MarabouError.h"
 #include "PiecewiseLinearCaseSplit.h"

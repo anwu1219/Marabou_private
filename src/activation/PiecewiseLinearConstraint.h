@@ -16,6 +16,7 @@
 #ifndef __PiecewiseLinearConstraint_h__
 #define __PiecewiseLinearConstraint_h__
 
+#include "BoundManager.h"
 #include "FloatUtils.h"
 #include "LPSolver.h"
 #include "ITableau.h"
