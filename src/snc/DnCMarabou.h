@@ -20,9 +20,34 @@
 #include "Options.h"
 #include "InputQuery.h"
 
+#include <atomic>
+#include <boost/chrono.hpp>
+#include <mutex>
+
+
 class DnCMarabou
 {
 public:
+    struct DnCArgument{
+        DnCArgument( Engine *engine, InputQuery *inputQuery, std::mutex *mtx )
+            : _mtx( mtx )
+        {
+            _engine = engine;
+            _inputQuery = inputQuery;
+        }
+
+        DnCArgument( DnCManager *dncManager, std::mutex *mtx )
+            : _mtx( mtx )
+        {
+            _dncManager = dncManager;
+        }
+
+        DnCManager *_dncManager = NULL;
+        Engine *_engine;
+        InputQuery *_inputQuery;
+        std::mutex *_mtx;
+    };
+
     DnCMarabou();
 
     /*
@@ -33,10 +58,17 @@ public:
 private:
     std::unique_ptr<DnCManager> _dncManager;
     InputQuery _inputQuery;
+    Engine _engine;
+
     /*
       Display the results
     */
     void displayResults( unsigned long long microSecondsElapsed ) const;
+
+    static void solveDnC( DnCArgument argument );
+
+    static void solveMILP( DnCArgument argument );
+
 };
 
 #endif // __DnCMarabou_h__

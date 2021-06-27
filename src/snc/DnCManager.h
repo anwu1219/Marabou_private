@@ -67,10 +67,17 @@ public:
     */
     void printResult();
 
+    void setDone( std::atomic_bool *done )
+    {
+        _done = done;
+    }
+
     /*
       Store the solution into the map
     */
     void getSolution( std::map<int, double> &ret, InputQuery &inputQuery );
+
+    std::atomic_bool *_done;
 
 private:
     /*
@@ -157,6 +164,7 @@ private:
       The strategy for dividing a query
     */
     SnCDivideStrategy _sncSplittingStrategy;
+
 };
 
 #endif // __DnCManager_h__

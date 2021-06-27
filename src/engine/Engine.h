@@ -62,6 +62,11 @@ public:
 
     Engine();
 
+    void setDone( std::atomic_bool *done )
+    {
+        _done = done;
+    }
+
     /*
       Attempt to find a feasible solution for the input within a time limit
       (a timeout of 0 means no time limit). Returns true if found, false if infeasible.
@@ -186,6 +191,18 @@ public:
     void resetExitCode();
     void resetBoundTighteners();
 
+    /*
+      Solve the query with MILP encoding
+    */
+    bool _solveWithMILP;
+
+    std::atomic_bool *_done;
+
+    /*
+      Solve the input query with a MILP solver (Gurobi)
+    */
+    bool solveWithMILPEncoding( unsigned timeoutInSeconds );
+
 private:
     enum BasisRestorationRequired {
         RESTORATION_NOT_NEEDED = 0,
@@ -296,11 +313,6 @@ private:
     std::unique_ptr<PiecewiseLinearConstraint> _disjunctionForSplitting;
 
     /*
-      Solve the query with MILP encoding
-    */
-    bool _solveWithMILP;
-
-    /*
       LPSolver object
     */
     std::unique_ptr<LPSolver> _gurobi;
@@ -388,11 +400,6 @@ private:
       Pick the input variable with the largest interval
     */
     PiecewiseLinearConstraint *pickSplitPLConstraintBasedOnIntervalWidth();
-
-    /*
-      Solve the input query with a MILP solver (Gurobi)
-    */
-    bool solveWithMILPEncoding( unsigned timeoutInSeconds );
 
     /*
       Extract the satisfying assignment from the MILP solver

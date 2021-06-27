@@ -33,7 +33,8 @@
 #include <string.h>
 
 Engine::Engine()
-    : _context()
+    : _solveWithMILP( Options::get()->getBool( Options::SOLVE_WITH_MILP ) )
+    , _context()
     , _boundManager( _context )
     , _rowBoundTightener( *_tableau, _boundManager )
     , _smtCore( this, _context )
@@ -44,7 +45,6 @@ Engine::Engine()
     , _verbosity( Options::get()->getInt( Options::VERBOSITY ) )
     , _splittingStrategy( Options::get()->getDivideStrategy() )
     , _symbolicBoundTighteningType( Options::get()->getSymbolicBoundTighteningType() )
-    , _solveWithMILP( Options::get()->getBool( Options::SOLVE_WITH_MILP ) )
     , _gurobi( nullptr )
     , _milpEncoder( nullptr )
     , _solutionFoundAndStoredInOriginalQuery( false )

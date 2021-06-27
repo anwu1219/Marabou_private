@@ -14,7 +14,6 @@
  ** [[ Add lengthier description here ]]
  **/
 
-#include "DnCManager.h"
 #include "DnCMarabou.h"
 #include "File.h"
 #include "MStringf.h"
@@ -23,6 +22,9 @@
 #include "MarabouError.h"
 #include "QueryLoader.h"
 #include "AcasParser.h"
+
+#include <boost/thread.hpp>
+#include <csignal>
 
 DnCMarabou::DnCMarabou()
     : _dncManager( nullptr )
@@ -92,44 +94,88 @@ void DnCMarabou::run()
     /*
       Step 3: initialize the DNC core
     */
-    _dncManager = std::unique_ptr<DnCManager>
-        ( new DnCManager( &_inputQuery ) );
 
     struct timespec start = TimeUtils::sampleMicro();
 
-    _dncManager->solve();
+    boost::thread *threads = new boost::thread[2];
+    _dncManager = std::unique_ptr<DnCManager>
+        ( new DnCManager( &_inputQuery ) );
+    std::atomic_bool done (false);
+    _dncManager->setDone( &done );
+    _engine.setDone( &done );
 
-    struct timespec end = TimeUtils::sampleMicro();
+    std::unique_ptr<InputQuery> newInputQuery =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
 
-    unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
-    displayResults( totalElapsed );
+    std::mutex mtx;
+
+    threads[0] = boost::thread( solveDnC, DnCArgument( &(*_dncManager), &mtx ) );
+    threads[1] = boost::thread( solveMILP, DnCArgument( &_engine, &(*newInputQuery), &mtx ) );
+
+    boost::chrono::milliseconds waitTime( 100 );
+    while ( !done.load() )
+        boost::this_thread::sleep_for( waitTime );
+
+    if ( done.load() )
+    {
+        struct timespec end = TimeUtils::sampleMicro();
+
+        unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
+        displayResults( totalElapsed );
+
+        for ( unsigned i = 0; i < 2; ++i )
+        {
+            pthread_kill(threads[i].native_handle(), 9);
+            threads[i].join();
+        }
+    }
+}
+
+void DnCMarabou::solveDnC( DnCArgument argument )
+{
+    DnCManager *dncManager = argument._dncManager;
+    std::mutex &mtx = *(argument._mtx);
+    dncManager->solve();
+    mtx.lock();
+    std::cout << "Solved by DnC" << std::endl;
+    String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+    File summaryFile( summaryFilePath );
+    summaryFile.open( File::MODE_WRITE_TRUNCATE );
+    if ( dncManager->getExitCode() == DnCManager::UNSAT )
+        summaryFile.write( "holds\n" );
+    else if ( dncManager->getExitCode() == DnCManager::SAT )
+        summaryFile.write( "violated\n" );
+    mtx.unlock();
+
+    *(dncManager->_done) = true;
+}
+
+void DnCMarabou::solveMILP( DnCArgument argument )
+{
+    Engine *engine = argument._engine;
+    InputQuery *inputQuery = argument._inputQuery;
+    std::mutex &mtx = *(argument._mtx);
+    engine->_solveWithMILP = true;
+
+    engine->setVerbosity(0);
+    if ( engine->processInputQuery( *inputQuery ) )
+        engine->solveWithMILPEncoding(0);
+    mtx.lock();
+    std::cout << "Solved by MILP" << std::endl;
+    String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+    File summaryFile( summaryFilePath );
+    summaryFile.open( File::MODE_WRITE_TRUNCATE );
+    if ( engine->getExitCode() == Engine::UNSAT )
+        summaryFile.write( "holds\n" );
+    else if ( engine->getExitCode() == Engine::SAT )
+        summaryFile.write( "violated\n" );
+    mtx.unlock();
+    *(engine->_done) = true;
 }
 
 void DnCMarabou::displayResults( unsigned long long microSecondsElapsed ) const
 {
-    _dncManager->printResult();
-    String resultString = _dncManager->getResultString();
-    // Create a summary file, if requested
-    String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
-    if ( summaryFilePath != "" )
-    {
-        File summaryFile( summaryFilePath );
-        summaryFile.open( File::MODE_WRITE_TRUNCATE );
-
-        // Field #1: result
-        summaryFile.write( resultString );
-
-        // Field #2: total elapsed time
-        summaryFile.write( Stringf( " %u ", microSecondsElapsed / 1000000 ) );
-
-        // Field #3: number of visited tree states
-        summaryFile.write( Stringf( "0 " ) );
-
-        // Field #4: average pivot time in micro seconds
-        summaryFile.write( Stringf( "0" ) );
-
-        summaryFile.write( "\n" );
-    }
+    std::cout << "Runtime is " << microSecondsElapsed / 1000000 << std::endl;
 }
 
 //
