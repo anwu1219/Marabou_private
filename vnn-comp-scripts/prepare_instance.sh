@@ -5,6 +5,8 @@ benchmark=$2
 onnx=$3
 vnnlib=$4
 
+benchmark_dir=$(realpath ../benchmarks/)
+
 if [[ $onnx == *"gz" ]]
 then
     echo "gz file..."
@@ -20,4 +22,4 @@ then
     fi
 fi
 
-./../maraboupy/prepare_instance.py $onnx $vnnlib
+./../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir

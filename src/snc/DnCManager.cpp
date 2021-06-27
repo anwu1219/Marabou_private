@@ -39,7 +39,7 @@ void DnCManager::dncSolve( WorkerQueue *workload, std::shared_ptr<Engine> engine
                            std::atomic_bool &shouldQuitSolving,
                            unsigned threadId, unsigned onlineDivides,
                            float timeoutFactor, SnCDivideStrategy divideStrategy,
-                           bool restoreTreeStates, unsigned verbosity )
+                           bool , unsigned verbosity )
 {
     unsigned cpuId = 0;
     (void) threadId;
@@ -55,7 +55,6 @@ void DnCManager::dncSolve( WorkerQueue *workload, std::shared_ptr<Engine> engine
                       timeoutFactor, divideStrategy, verbosity );
     while ( !shouldQuitSolving.load() )
     {
-        std::cout << restoreTreeStates << std::endl;
         worker.popOneSubQueryAndSolve();
     }
 }

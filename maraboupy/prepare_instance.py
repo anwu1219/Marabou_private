@@ -36,10 +36,10 @@ def main():
                 exit(1)
         MarabouCore.saveQuery(query, filename)
 
-def getInputQueryName(networkPath, propPath, workDir):
+def getInputQueryName(networkPath, propPath, benchmarkDir):
     netname = os.path.basename(networkPath)
     propname = os.path.basename(propPath)
-    return os.path.join(workDir, netname + "-" + propname)
+    return os.path.join(benchmarkDir, netname + "-" + propname)
 
 def createQuery(args):
     networkPath = args.network
@@ -59,7 +59,7 @@ def createQuery(args):
 
     ipq = network.getMarabouQuery()
 
-    return ipq, getInputQueryName(networkPath, propPath, args.work_dir)
+    return ipq, getInputQueryName(networkPath, propPath, args.benchmark_dir)
 
 def arguments():
     ################################ Arguments parsing ##############################
@@ -69,6 +69,8 @@ def arguments():
                         help='The network file name, the extension can be only .pb, .nnet, and .onnx')
     parser.add_argument('prop', type=str, nargs='?', default=None,
                         help='The property file name')
+    parser.add_argument('benchmark_dir', type=str, nargs='?', default=None,
+                        help='The directory to store benchmarks')
     parser.add_argument('--work-dir', type=str, default="./",
                         help='The working dir')
     parser.add_argument('--debug', action="store_true", default=False)
