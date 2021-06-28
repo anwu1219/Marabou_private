@@ -86,7 +86,7 @@ public:
 
    // Solve and extract the solution, or the best known bound on the
    // objective function
-    void solve(){}
+    void solve( unsigned numWorkers = 1 ){ std::cout << numWorkers; };
     double getValue( unsigned variable ){ return _value[Stringf("x%u", variable )]; }
 
     double _objective = 0;

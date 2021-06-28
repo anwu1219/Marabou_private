@@ -143,6 +143,10 @@ public:
     void setNetworkLevelReasoner( NLR::NetworkLevelReasoner *nlr );
     NLR::NetworkLevelReasoner *getNetworkLevelReasoner() const;
 
+    bool outputPropertySatisfied( double *outputs );
+
+    void markOutputConstraints();
+
 private:
     unsigned _numberOfVariables;
     List<Equation> _equations;
@@ -150,6 +154,7 @@ private:
     Map<unsigned, double> _upperBounds;
     List<PiecewiseLinearConstraint *> _plConstraints;
     List<DisjunctionConstraint *> _disjunctionConstraints;
+    List<PiecewiseLinearConstraint *> _outputConstraints;
 
     Map<unsigned, double> _solution;
 

@@ -129,6 +129,34 @@ public:
     */
     String serializeToString() const;
 
+    bool satisfiedBy( Map<unsigned,double> &assignment )
+    {
+        for ( const auto & split : _disjuncts )
+        {
+            bool satisfied = true;
+
+            for ( const auto &bound : split.getBoundTightenings() )
+            {
+                if ( bound._type == Tightening::LB &&
+                     assignment[bound._variable] < bound._value )
+                {
+                    satisfied = false;
+                    break;
+                }
+                else if ( bound._type == Tightening::UB &&
+                          assignment[bound._variable] > bound._value )
+                {
+                    satisfied = false;
+                    break;
+                }
+            }
+
+            if ( satisfied )
+                return true;
+        }
+        return false;
+    }
+
 private:
     /*
       The disjuncts that form this PL constraint

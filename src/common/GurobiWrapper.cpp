@@ -296,8 +296,10 @@ void GurobiWrapper::setTimeLimit( double seconds )
     _model->set( GRB_DoubleParam_TimeLimit, seconds );
 }
 
-void GurobiWrapper::solve()
+void GurobiWrapper::solve( unsigned numThreads )
 {
+    _model->getEnv().set( GRB_IntParam_Threads,
+                          numThreads );
     try
     {
         /*

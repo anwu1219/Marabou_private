@@ -106,7 +106,7 @@ public:
 
     // Solve and extract the solution, or the best known bound on the
     // objective function
-    virtual void solve() = 0;
+    virtual void solve( unsigned numThreads = 1 ) = 0;
     virtual double getValue( unsigned variable ) = 0;
     virtual double getObjective() = 0;
     virtual void extractSolution( Map<String, double> &values, double &costOrObjective ) = 0;

@@ -97,21 +97,25 @@ void DnCMarabou::run()
 
     struct timespec start = TimeUtils::sampleMicro();
 
-    boost::thread *threads = new boost::thread[2];
+    boost::thread *threads = new boost::thread[3];
     _dncManager = std::unique_ptr<DnCManager>
         ( new DnCManager( &_inputQuery ) );
     std::atomic_bool done (false);
     _dncManager->setDone( &done );
-    _engine.setDone( &done );
+    _engine1.setDone( &done );
+    _engine2.setDone( &done );
 
-    std::unique_ptr<InputQuery> newInputQuery =
+    std::unique_ptr<InputQuery> newInputQuery1 =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    std::unique_ptr<InputQuery> newInputQuery2 =
         std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
 
     std::mutex mtx;
 
     threads[0] = boost::thread( solveDnC, DnCArgument( &(*_dncManager), &mtx ) );
-    threads[1] = boost::thread( solveMILP, DnCArgument( &_engine, &(*newInputQuery), &mtx ) );
-
+    threads[1] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery1), &mtx ) );
+    threads[2] = boost::thread( solveSingleThread, DnCArgument( &_engine2, &(*newInputQuery2), &mtx ) );
+    
     boost::chrono::milliseconds waitTime( 100 );
     while ( !done.load() )
         boost::this_thread::sleep_for( waitTime );
@@ -123,7 +127,7 @@ void DnCMarabou::run()
         unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
         displayResults( totalElapsed );
 
-        for ( unsigned i = 0; i < 2; ++i )
+        for ( unsigned i = 0; i < 3; ++i )
         {
             pthread_kill(threads[i].native_handle(), 9);
             threads[i].join();
@@ -158,6 +162,7 @@ void DnCMarabou::solveMILP( DnCArgument argument )
     std::mutex &mtx = *(argument._mtx);
     engine->_solveWithMILP = true;
 
+    engine->_numWorkers = 15;
     engine->setVerbosity(0);
     if ( engine->processInputQuery( *inputQuery ) )
         engine->solveWithMILPEncoding(0);
@@ -173,7 +178,7 @@ void DnCMarabou::solveMILP( DnCArgument argument )
     }
     else if ( result == Engine::SAT )
     {
-        if ( inputQuery->_networkLevelReasoner )
+        if ( inputQuery->_networkLevelReasoner && !engine->_solutionFoundAndStoredInOriginalQuery )
         {
             double *input = new double[inputQuery->getNumInputVariables()];
             for ( unsigned i = 0; i < inputQuery->getNumInputVariables(); ++i )
@@ -195,11 +200,7 @@ void DnCMarabou::solveMILP( DnCArgument argument )
         }
         else
         {
-            printf( "\n" );
-            printf( "Output:\n" );
-            for ( unsigned i = 0; i < inputQuery->getNumOutputVariables(); ++i )
-                printf( "y%u = %lf\n", i, inputQuery->getSolutionValue( inputQuery->outputVariableByIndex( i ) ) );
-            printf( "\n" );
+            printf( "sat\n" );
         }
     }
     else if ( result == Engine::TIMEOUT )
@@ -216,6 +217,78 @@ void DnCMarabou::solveMILP( DnCArgument argument )
     }
 
     std::cout << "Solved by MILP" << std::endl;
+    String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+    File summaryFile( summaryFilePath );
+    summaryFile.open( File::MODE_WRITE_TRUNCATE );
+    if ( engine->getExitCode() == Engine::UNSAT )
+        summaryFile.write( "holds\n" );
+    else if ( engine->getExitCode() == Engine::SAT )
+        summaryFile.write( "violated\n" );
+    mtx.unlock();
+    *(engine->_done) = true;
+}
+
+void DnCMarabou::solveSingleThread( DnCArgument argument )
+{
+    Engine *engine = argument._engine;
+    InputQuery *inputQuery = argument._inputQuery;
+    std::mutex &mtx = *(argument._mtx);
+
+    engine->setVerbosity(0);
+    engine->_numWorkers = 1;
+    if ( engine->processInputQuery( *inputQuery ) )
+        engine->solve();
+    if ( engine->getExitCode() == Engine::SAT )
+        engine->extractSolution( *inputQuery );
+
+    mtx.lock();
+    Engine::ExitCode result = engine->getExitCode();
+
+    if ( result == Engine::UNSAT )
+    {
+        printf( "unsat\n" );
+    }
+    else if ( result == Engine::SAT )
+    {
+        if ( inputQuery->_networkLevelReasoner && !engine->_solutionFoundAndStoredInOriginalQuery )
+        {
+            double *input = new double[inputQuery->getNumInputVariables()];
+            for ( unsigned i = 0; i < inputQuery->getNumInputVariables(); ++i )
+                input[i] = inputQuery->getSolutionValue( inputQuery->inputVariableByIndex( i ) );
+
+            NLR::NetworkLevelReasoner *nlr = inputQuery->_networkLevelReasoner;
+            NLR::Layer *lastLayer = nlr->getLayer( nlr->getNumberOfLayers() - 1 );
+            double *output = new double[lastLayer->getSize()];
+
+            nlr->evaluate( input, output );
+
+            printf( "\n" );
+            printf( "Output:\n" );
+            for ( unsigned i = 0; i < lastLayer->getSize(); ++i )
+                printf( "y%u = %lf\n", i, output[i] );
+            printf( "\n" );
+
+            printf( "sat\n" );
+        }
+        else
+        {
+            printf( "sat\n" );
+        }
+    }
+    else if ( result == Engine::TIMEOUT )
+    {
+        printf( "Timeout\n" );
+    }
+    else if ( result == Engine::ERROR )
+    {
+        printf( "Error\n" );
+    }
+    else
+    {
+        printf( "UNKNOWN EXIT CODE! (this should not happen)" );
+    }
+
+    std::cout << "Solved by singled thread soi" << std::endl;
     String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
     File summaryFile( summaryFilePath );
     summaryFile.open( File::MODE_WRITE_TRUNCATE );

@@ -1161,3 +1161,58 @@ bool InputQuery::constructMaxLayer( NLR::NetworkLevelReasoner *nlr,
     INPUT_QUERY_LOG( "\tSuccessful!" );
     return true;
 }
+
+bool InputQuery::outputPropertySatisfied( double *outputsArr )
+{
+    Map<unsigned,double> outputs;
+    NLR::Layer *layer = _networkLevelReasoner->
+        getLayer( _networkLevelReasoner->getNumberOfLayers() - 1 );
+    for ( unsigned i = 0; i < layer->getSize(); ++i )
+        outputs[layer->neuronToVariable( i )] = outputsArr[i];
+
+    for ( const auto &pair : outputs )
+    {
+        if ( pair.second < _lowerBounds[pair.first] )
+            return false;
+        if ( pair.second > _upperBounds[pair.first] )
+            return false;
+    }
+
+    for ( const auto &constraint : _outputConstraints )
+    {
+        if ( !constraint->satisfiedBy( outputs ) )
+            return false;
+    }
+    return true;
+}
+
+void InputQuery::markOutputConstraints()
+{
+    if ( !_networkLevelReasoner )
+        return;
+
+    _outputConstraints.clear();
+    List<unsigned> outputVariables;
+    NLR::Layer *layer = _networkLevelReasoner->
+        getLayer( _networkLevelReasoner->getNumberOfLayers() - 1 );
+    for ( unsigned i = 0; i < layer->getSize(); ++i )
+        outputVariables.append(layer->neuronToVariable( i ) );
+    for ( const auto &constraint : _plConstraints )
+    {
+        if ( constraint->getType() == DISJUNCTION )
+        {
+            List<unsigned> participatingVariables = constraint->getParticipatingVariables();
+            bool isOutputConstraint = true;
+            for ( const auto &var : participatingVariables )
+                if ( !outputVariables.exists( var ) )
+                {
+                    isOutputConstraint = false;
+                    break;
+                }
+            if ( isOutputConstraint )
+                _outputConstraints.append( constraint );
+        }
+    }
+    if ( _outputConstraints.size() > 0 )
+        std::cout << "Found output constraint!" << std::endl;
+}

@@ -103,7 +103,7 @@ public:
 
     // Solve and extract the solution, or the best known bound on the
     // objective function
-    void solve();
+    void solve( unsigned numThreads = 1 );
     inline double getValue( unsigned variable )
     {
         return _nameToVariable[Stringf("x%u", variable)]->get( GRB_DoubleAttr_X );

@@ -203,6 +203,10 @@ public:
     */
     bool solveWithMILPEncoding( unsigned timeoutInSeconds );
 
+    bool _solutionFoundAndStoredInOriginalQuery;
+
+    unsigned _numWorkers;
+
 private:
     enum BasisRestorationRequired {
         RESTORATION_NOT_NEEDED = 0,
@@ -429,8 +433,6 @@ private:
       Copy of the original input query
     */
     InputQuery _originalInputQuery;
-    bool _solutionFoundAndStoredInOriginalQuery;
-
     /*
       Seed for random stuff
     */
@@ -453,6 +455,8 @@ private:
     void solveLPWithGurobi( List<LPSolver::Term> &cost );
 
     void informLPSolverOfBounds();
+
+    bool performSimulation();
 
     bool solveWithGurobi( unsigned timeoutInSeconds );
 

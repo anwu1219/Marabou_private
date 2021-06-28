@@ -36,6 +36,8 @@
 
 Engine::Engine()
     : _solveWithMILP( Options::get()->getBool( Options::SOLVE_WITH_MILP ) )
+    , _solutionFoundAndStoredInOriginalQuery( false )
+    , _numWorkers( 1 )
     , _context()
     , _boundManager( _context )
     , _rowBoundTightener( *_tableau, _boundManager )
@@ -49,7 +51,6 @@ Engine::Engine()
     , _symbolicBoundTighteningType( Options::get()->getSymbolicBoundTighteningType() )
     , _gurobi( nullptr )
     , _milpEncoder( nullptr )
-    , _solutionFoundAndStoredInOriginalQuery( false )
     , _seed( 1219 )
     , _heuristicCostManager( this )
     , _costFunctionInitialized( false )
@@ -221,11 +222,57 @@ void Engine::informLPSolverOfBounds()
 
 }
 
+bool Engine::performSimulation()
+{
+    std::cout << "Performing simulation..." << std::endl;
+    std::default_random_engine re;
+    unsigned numberOfSimulations = 1000;
+
+    unsigned lastLayerSize = _networkLevelReasoner->getLayer
+        ( _networkLevelReasoner->getNumberOfLayers() - 1 )->getSize();
+    double *inputs = new double[_networkLevelReasoner->getLayer( 0 )->getSize()];
+    double *outputs = new double[lastLayerSize];
+
+    for ( unsigned sim = 0; sim < numberOfSimulations; ++sim )
+    {
+        for ( unsigned i = 0; i < _networkLevelReasoner->getLayer( 0 )->getSize(); ++i )
+        {
+            std::uniform_real_distribution<double> distribution( _networkLevelReasoner->getLayer( 0 )->getLb( i ),
+                                                                 _networkLevelReasoner->getLayer( 0 )->getUb( i ) );
+
+            inputs[i] = distribution( re );
+        }
+        _networkLevelReasoner->evaluate( inputs, outputs );
+
+        if ( _preprocessedQuery.outputPropertySatisfied( outputs ) )
+        {
+            for ( unsigned i = 0; i < lastLayerSize; ++i )
+                printf( "y%u = %f\n", i, outputs[i] );
+
+            delete inputs;
+            delete outputs;
+            std::cout << "Performing simulation - solution found!" << std::endl;
+            return true;
+        }
+    }
+    delete inputs;
+    delete outputs;
+    std::cout << "Performing simulation - no solution found" << std::endl;
+    return false;
+}
+
 bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
 {
     struct timespec mainLoopStart = TimeUtils::sampleMicro();
 
     _statistics.resetTimeStatsForMainLoop();
+
+    if ( _networkLevelReasoner && performSimulation() )
+    {
+        _solutionFoundAndStoredInOriginalQuery = true;
+        _exitCode = Engine::SAT;
+        return true;
+    }
 
     struct timespec start = TimeUtils::sampleMicro();
     _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
@@ -866,6 +913,8 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
         _boundManager.initialize( _preprocessedQuery.getNumberOfVariables() );
 
+        _preprocessedQuery.markOutputConstraints();
+
         for ( unsigned i = 0; i < _preprocessedQuery.getNumberOfVariables(); ++i )
         {
             _boundManager.setLowerBound( i, _preprocessedQuery.getLowerBound( i ) );
@@ -885,7 +934,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
         if ( preprocess )
         {
-            performSymbolicBoundTightening(16);
+            performSymbolicBoundTightening( _numWorkers );
             performMILPSolverBoundedTightening();
         }
 
@@ -934,12 +983,6 @@ void Engine::extractSolution( InputQuery &inputQuery )
     if ( _solutionFoundAndStoredInOriginalQuery )
     {
         std::cout << "Solution found by concretizing input!" << std::endl;
-        for ( unsigned i = 0; i < inputQuery.getNumberOfVariables(); ++i )
-        {
-            inputQuery.setSolutionValue( i, _originalInputQuery.getSolutionValue( i ) );
-            inputQuery.setLowerBound( i, _originalInputQuery.getSolutionValue( i ) );
-            inputQuery.setUpperBound( i, _originalInputQuery.getSolutionValue( i ) );
-        }
     }
     else
     {
@@ -1447,7 +1490,7 @@ bool Engine::solveWithMILPEncoding( unsigned timeoutInSeconds )
     _gurobi->setTimeLimit( timeoutForGurobi );
     _gurobi->setVerbosity( _verbosity );
 
-    _gurobi->solve();
+    _gurobi->solve( _numWorkers );
 
     _statistics.setUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES, _gurobi->getNumberOfNodes() );
     if ( _verbosity > 0 )

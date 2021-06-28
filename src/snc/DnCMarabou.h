@@ -58,7 +58,8 @@ public:
 private:
     std::unique_ptr<DnCManager> _dncManager;
     InputQuery _inputQuery;
-    Engine _engine;
+    Engine _engine1;
+    Engine _engine2;
 
     /*
       Display the results
@@ -69,6 +70,7 @@ private:
 
     static void solveMILP( DnCArgument argument );
 
+    static void solveSingleThread( DnCArgument argument );
 };
 
 #endif // __DnCMarabou_h__

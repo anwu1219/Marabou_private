@@ -315,6 +315,8 @@ public:
         return *_phaseStatus;
     };
 
+    virtual bool satisfiedBy( Map<unsigned,double> & ) { return false; };
+
 protected:
     BoundManager *_boundManager;
     LPSolver *_gurobi;

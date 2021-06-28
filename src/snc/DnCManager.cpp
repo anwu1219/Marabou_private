@@ -318,7 +318,8 @@ void DnCManager::printResult()
 
         InputQuery *inputQuery = _engineWithSATAssignment->getInputQuery();
         _engineWithSATAssignment->extractSolution( *( inputQuery ) );
-
+        if ( _engineWithSATAssignment->_solutionFoundAndStoredInOriginalQuery )
+            return;
         Vector<double> inputVector( inputQuery->getNumInputVariables() );
         Vector<double> outputVector( inputQuery->getNumOutputVariables() );
         double *inputs( inputVector.data() );
@@ -371,6 +372,8 @@ bool DnCManager::createEngines( unsigned numberOfEngines )
 {
     // Create the base engine
     _baseEngine = std::make_shared<Engine>();
+    _baseEngine->setVerbosity( 0 );
+    _baseEngine->_numWorkers = 16;
     if ( !_baseEngine->processInputQuery( *_baseInputQuery ) )
         // Solved by preprocessing, we are done!
         return false;
@@ -380,6 +383,7 @@ bool DnCManager::createEngines( unsigned numberOfEngines )
     {
         auto engine = std::make_shared<Engine>();
         engine->setVerbosity( 0 );
+        engine->_numWorkers = 1;
         _engines.append( engine );
     }
 
