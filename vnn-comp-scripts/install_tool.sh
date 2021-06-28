@@ -3,6 +3,9 @@
 sudo apt install gzip
 
 # install marabou
-
-# install runlim
-wget http://fmv.jku.at/runlim/runlim-1.10.tar.gz
+rm -rf build
+mkdir build
+cd build
+cmake ./ -DENABLE_GUROBI=ON
+make -j32
+cd ../
