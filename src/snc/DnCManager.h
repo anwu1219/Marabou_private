@@ -100,7 +100,7 @@ private:
     /*
       Divide up the input region and store them in subqueries
     */
-    void initialDivide( SubQueries &subQueries );
+    void initialDivide( SubQueries &subQueries, unsigned id );
 
     /*
       Read the exitCode of the engine of each thread, and update the manager's

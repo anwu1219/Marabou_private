@@ -141,7 +141,7 @@ void DnCManager::solve( unsigned resources, unsigned id )
         throw MarabouError( MarabouError::ALLOCATION_FAILED, "DnCManager::workload" );
 
     SubQueries subQueries;
-    initialDivide( subQueries );
+    initialDivide( subQueries, id );
 
     // Create objects shared across workers
     _numUnsolvedSubQueries = subQueries.size();
@@ -159,6 +159,12 @@ void DnCManager::solve( unsigned resources, unsigned id )
     unsigned onlineDivides = Options::get()->getInt( Options::NUM_ONLINE_DIVIDES );
     float timeoutFactor = Options::get()->getFloat( Options::TIMEOUT_FACTOR );
     bool restoreTreeStates = Options::get()->getBool( Options::RESTORE_TREE_STATES );
+
+    if ( id == 4 )
+    {
+        onlineDivides = 2;
+        timeoutFactor = 1.5;
+    }
 
     // Spawn threads and start solving
     std::list<std::thread> threads;
@@ -399,7 +405,7 @@ bool DnCManager::createEngines( unsigned numberOfEngines, unsigned id )
     return true;
 }
 
-void DnCManager::initialDivide( SubQueries &subQueries )
+void DnCManager::initialDivide( SubQueries &subQueries, unsigned id )
 {
     auto split = std::unique_ptr<PiecewiseLinearCaseSplit>
         ( new PiecewiseLinearCaseSplit() );
@@ -429,6 +435,11 @@ void DnCManager::initialDivide( SubQueries &subQueries )
 
     unsigned initialDivides = Options::get()->getInt( Options::NUM_INITIAL_DIVIDES );
     unsigned initialTimeout = Options::get()->getInt( Options::INITIAL_TIMEOUT );
+    if ( id == 4 )
+    {
+        initialDivides = 6;
+        initialTimeout = 5;
+    }
 
     String queryId;
 

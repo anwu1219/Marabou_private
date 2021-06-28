@@ -94,6 +94,59 @@ void DnCMarabou::run()
     /*
       Step 3: initialize the DNC core
     */
+    if ( _inputQuery.getInputVariables().size() <= 10 )
+    {
+        std::cout << "Low input dimension detected..." << std::endl;
+
+        DisjunctionConstraint *inputConstraint = NULL;
+        DisjunctionConstraint *outputConstraint = NULL;
+        if (_inputQuery.getDisjunctionConstraints().size() == 2)
+        {
+            inputConstraint = *(_inputQuery.getDisjunctionConstraints().begin());
+            outputConstraint = *(_inputQuery.getDisjunctionConstraints().rbegin());
+            for ( const auto &split : inputConstraint->getCaseSplits() )
+            {
+                for ( const auto &bound : split.getBoundTightenings() )
+                {
+                    if ( _inputQuery.getInputVariables().exists( bound._variable ) )
+                        break;
+                    else
+                    {
+                        inputConstraint = *(_inputQuery.getDisjunctionConstraints().rbegin());
+                        outputConstraint = *(_inputQuery.getDisjunctionConstraints().begin());
+                    }
+                }
+                break;
+            }
+        }
+        else if (_inputQuery.getDisjunctionConstraints().size() == 1)
+        {
+            outputConstraint = *(_inputQuery.getDisjunctionConstraints().begin());
+        }
+
+        if ( inputConstraint == NULL )
+            solveACASLike( _inputQuery, outputConstraint );
+        else
+        {
+            for ( const auto &split : inputConstraint->getCaseSplits() )
+            {
+                std::unique_ptr<InputQuery> newInputQuery =
+                    std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+                for ( const auto &bound : split.getBoundTightenings() )
+                {
+                    if ( bound._type == Tightening::LB )
+                        newInputQuery->setLowerBound( bound._variable, bound._value );
+                    else
+                        newInputQuery->setUpperBound( bound._variable, bound._value );
+                }
+                solveACASLike( *newInputQuery, outputConstraint );
+            }
+        }
+        std::cout << "Done" << std::endl;
+        return;
+    }
+
+
 
     // 1. preprocess with 48 threads
     _engine1._numWorkers = 48;
@@ -122,6 +175,100 @@ void DnCMarabou::run()
     }
 }
 
+void DnCMarabou::solveACASLike( InputQuery &inputQuery, DisjunctionConstraint *constraint )
+{
+    if ( constraint == NULL )
+    {
+        // 1. preprocess with 48 threads
+        _engine1._numWorkers = 48;
+        _engine1.setVerbosity(0);
+        if ( !_engine1.processInputQuery( inputQuery ) )
+        {
+            std::cout << "Solved by preprocessing" << std::endl;
+            String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+            File summaryFile( summaryFilePath );
+            summaryFile.open( File::MODE_WRITE_TRUNCATE );
+            summaryFile.write( "holds\n" );
+            return;
+        }
+
+        std::unique_ptr<DnCManager> dncManager1 = std::unique_ptr<DnCManager>
+            ( new DnCManager( _engine1.getInputQuery() ) );
+        dncManager1->solve( 48, 4 );
+        dncManager1->printResult();
+        std::cout << "Solved by DnC " << std::endl;
+        if ( dncManager1->getExitCode() == DnCManager::SAT )
+            {
+                String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+                File summaryFile( summaryFilePath );
+                summaryFile.open( File::MODE_WRITE_TRUNCATE );
+                summaryFile.write( "violated\n" );
+                return;
+            }
+        else if ( dncManager1->getExitCode() == DnCManager::UNSAT )
+        {
+            String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+            File summaryFile( summaryFilePath );
+            summaryFile.open( File::MODE_WRITE_TRUNCATE );
+            summaryFile.write( "holds\n" );
+            return;
+        }
+        else
+        {
+            String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+            File summaryFile( summaryFilePath );
+            summaryFile.open( File::MODE_WRITE_TRUNCATE );
+            summaryFile.write( "unknown\n" );
+            return;
+        }
+    }
+    else
+    {
+        for ( const auto &split : constraint->getCaseSplits() )
+        {
+            std::unique_ptr<InputQuery> newInputQuery =
+                std::unique_ptr<InputQuery>( new InputQuery( inputQuery ) );
+
+            for ( const auto &bound : split.getBoundTightenings() )
+            {
+                if ( bound._type == Tightening::LB )
+                    newInputQuery->setLowerBound( bound._variable, bound._value );
+                else
+                    newInputQuery->setUpperBound( bound._variable, bound._value );
+            }
+            Engine engine;
+            engine._numWorkers = 48;
+            engine.setVerbosity(0);
+            if ( !engine.processInputQuery( *newInputQuery ) )
+            {
+                continue;
+            }
+            std::unique_ptr<DnCManager> dncManager = std::unique_ptr<DnCManager>
+                ( new DnCManager( engine.getInputQuery() ) );
+            dncManager->solve( 48, 4 );
+            dncManager->printResult();
+            std::cout << "Solved by DnC " << std::endl;
+            if ( dncManager->getExitCode() == DnCManager::SAT )
+            {
+                String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+                File summaryFile( summaryFilePath );
+                summaryFile.open( File::MODE_WRITE_TRUNCATE );
+                summaryFile.write( "violated\n" );
+                return;
+            }
+            else if ( dncManager->getExitCode() == DnCManager::UNSAT )
+                continue;
+            else
+                return;
+        }
+        String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+        File summaryFile( summaryFilePath );
+        summaryFile.open( File::MODE_WRITE_TRUNCATE );
+        summaryFile.write( "holds\n" );
+        return;
+    }
+}
+
 void DnCMarabou::solveDisjunction()
 {
     struct timespec start = TimeUtils::sampleMicro();
@@ -147,7 +294,7 @@ void DnCMarabou::solveDisjunction()
         std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
 
     std::mutex mtx;
-    DisjunctionConstraint *disj = *(_inputQuery.getDisjunctionConstraints().begin());
+    DisjunctionConstraint *disj = *(_engine1.getInputQuery()->getDisjunctionConstraints().begin());
     unsigned numDisj = disj->getCaseSplits().size();
     std::cout << "number of disjunctions: " << numDisj << std::endl;
 
