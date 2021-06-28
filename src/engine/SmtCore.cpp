@@ -122,7 +122,7 @@ void SmtCore::performSplit()
     //   2. Disable the constraint, so that it is marked as disbaled in the EngineState.
     List<PiecewiseLinearCaseSplit> splits = _constraintForSplitting->getCaseSplits();
     ASSERT( !splits.empty() );
-    ASSERT( splits.size() >= 2 ); // Not really necessary, can add code to handle this case.
+    ASSERT( splits.size() >= 1 ); // Not really necessary, can add code to handle this case.
 
     SmtStackEntry *stackEntry = new SmtStackEntry;
     // Perform the first split: add bounds and equations

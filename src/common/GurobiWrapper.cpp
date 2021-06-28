@@ -177,6 +177,31 @@ void GurobiWrapper::addEqConstraint( const List<Term> &terms, double scalar, Str
     addConstraint( terms, scalar, GRB_EQUAL, name );
 }
 
+void GurobiWrapper::addGenConstrIndicator( String varName, int binval, Tightening tightening )
+{
+    try
+    {
+        auto var = _nameToVariable[varName];
+        auto var2 = _nameToVariable[Stringf("x%u", tightening._variable)];
+        GRBLinExpr constraint = GRBLinExpr( *var2, 1.0 );
+
+        if ( tightening._type == Tightening::LB )
+            _model->addGenConstrIndicator( *var, binval, constraint, GRB_LESS_EQUAL,
+                                           tightening._value, "" );
+        else
+            _model->addGenConstrIndicator( *_nameToVariable[varName], binval, constraint, GRB_GREATER_EQUAL,
+                                           tightening._value, "" );
+    }
+    catch ( GRBException e )
+    {
+        std::cout << e.getMessage().c_str() << std::endl;
+        throw CommonError( CommonError::GUROBI_EXCEPTION,
+                           Stringf( "Gurobi exception. Gurobi Code: %u, message: %s\n",
+                                    e.getErrorCode(),
+                                    e.getMessage().c_str() ).ascii() );
+    }
+}
+
 void GurobiWrapper::addConstraint( const List<Term> &terms, double scalar, char sense, String name )
 {
     try

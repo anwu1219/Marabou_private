@@ -18,6 +18,7 @@
 
 #include "MString.h"
 #include "Map.h"
+#include "Tightening.h"
 
 class LPSolver
 {
@@ -70,6 +71,8 @@ public:
 
     // Add a new EQ constraint, e.g. 3x + 4y = -5
     virtual void addEqConstraint( const List<Term> &terms, double scalar, String name="" ) = 0;
+
+    virtual void addGenConstrIndicator( String , int , Tightening  ) {};
 
     virtual void removeConstraint( String ) = 0;
 

@@ -167,7 +167,7 @@ bool DisjunctionConstraint::satisfied() const
 
 List<PiecewiseLinearCaseSplit> DisjunctionConstraint::getCaseSplits() const
 {
-    return _disjuncts;
+    return _feasibleDisjuncts;
 }
 
 bool DisjunctionConstraint::phaseFixed() const

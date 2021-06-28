@@ -55,6 +55,7 @@ void MILPEncoder::encodeInputQuery( LPSolver &gurobi,
             encodeMaxConstraint( gurobi, (MaxConstraint *)plConstraint );
             break;
         case PiecewiseLinearFunctionType::DISJUNCTION:
+            encodeDisjConstraint( gurobi, (DisjunctionConstraint *)plConstraint );
             break;
 
         default:
@@ -233,4 +234,32 @@ void MILPEncoder::encodeMaxConstraint( LPSolver &gurobi, MaxConstraint *max )
         terms.clear();
     }
     _binVarIndex++;
+}
+
+void MILPEncoder::encodeDisjConstraint( LPSolver &gurobi, DisjunctionConstraint *disj )
+{
+    if ( !disj->isActive() )
+        return;
+
+    if ( _relax )
+        return;
+
+    List<String> cases;
+    for ( const auto &split : disj->getCaseSplits() )
+    {
+        gurobi.addVariable( Stringf( "a%u", _binVarIndex ),
+                            0,
+                            1,
+                            LPSolver::BINARY );
+
+        for ( const auto &bound : split.getBoundTightenings() )
+            gurobi.addGenConstrIndicator( Stringf( "a%u", _binVarIndex ), 1, bound );
+
+        cases.append(Stringf( "a%u", _binVarIndex ));
+        _binVarIndex++;
+    }
+    List<LPSolver::Term> terms;
+    for ( const auto &varName : cases )
+        terms.append( LPSolver::Term( 1, varName ) );
+    gurobi.addEqConstraint( terms, 1 );
 }

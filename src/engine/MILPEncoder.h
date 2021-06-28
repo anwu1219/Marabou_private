@@ -92,6 +92,12 @@ private:
       a_i \in {0, 1} (i = 1 ~ m)
     */
     void encodeMaxConstraint( LPSolver &gurobi, MaxConstraint *max );
+
+    /*
+      Encode a disjunction constraint
+    */
+    void encodeDisjConstraint( LPSolver &gurobi, DisjunctionConstraint *disj );
+
 };
 
 #endif // __MILPEncoder_h__

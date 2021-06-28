@@ -54,6 +54,8 @@ public:
     // Add a new EQ constraint, e.g. 3x + 4y = -5
     void addEqConstraint( const List<LPSolver::Term> &terms, double scalar, String name="" );
 
+    void addGenConstrIndicator( String varName, int binval, Tightening tightening );
+
     void removeConstraint( String constraintName );
 
     // A cost function to minimize, or an objective function to maximize
