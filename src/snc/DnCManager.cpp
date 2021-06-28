@@ -397,11 +397,12 @@ bool DnCManager::createEngines( unsigned numberOfEngines, unsigned id )
             engine->setBranchingHeuristic( DivideStrategy::Polarity );
         else if ( id == 1 || id == 3 )
             engine->setBranchingHeuristic( DivideStrategy::SOI );
+        if ( id == 4 )
+            engine->_constraintViolationThreshold = 0;
 
         engine->_numWorkers = 1;
         _engines.append( engine );
     }
-
     return true;
 }
 

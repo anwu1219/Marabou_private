@@ -224,10 +224,12 @@ void DnCMarabou::solveACASLike( InputQuery &inputQuery, DisjunctionConstraint *c
     }
     else
     {
+        std::cout << "Has disunction" << std::endl;
         for ( const auto &split : constraint->getCaseSplits() )
         {
             std::unique_ptr<InputQuery> newInputQuery =
                 std::unique_ptr<InputQuery>( new InputQuery( inputQuery ) );
+            newInputQuery->removeDisjunctions();
 
             for ( const auto &bound : split.getBoundTightenings() )
             {
