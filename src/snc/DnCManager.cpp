@@ -120,7 +120,7 @@ void DnCManager::solve()
 
     struct timespec startTime = TimeUtils::sampleMicro();
 
-    unsigned numWorkers = Options::get()->getInt( Options::NUM_WORKERS );
+    unsigned numWorkers = 24;
 
     // Preprocess the input query and create an engine for each of the threads
     if ( !createEngines( numWorkers ) )
