@@ -93,9 +93,8 @@ InputQuery Preprocessor::preprocess( const InputQuery &query, bool attemptVariab
       Then, eliminate fixed variables.
     */
 
-    unsigned iter = 0;
     bool continueTightening = true;
-    while ( continueTightening && ( iter++ < 2 || _preprocessed.getPiecewiseLinearConstraints().size() < 500 ) )
+    while ( continueTightening )
     {
         std::cout << "Preprocessing..." << std::endl;
         continueTightening = processEquations();
