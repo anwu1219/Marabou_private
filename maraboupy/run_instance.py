@@ -32,7 +32,7 @@ def main():
         resultName = args.result
         #subprocess.run("{} --input-query {} --summary-file {}".format(MARABOU_LOC,
         #                                                              ipqName, args.result).split())
-        options="--milp --initial-divides=4 --num-online-divides=4 --initial-timeout=20 --num-workers=12"
+        options="--snc --initial-divides=4 --num-online-divides=4 --initial-timeout=20 --num-workers=12"
         try:
             r = subprocess.run("{} --input-query {} --summary-file {}"
                                " --verbosity=2 {}".format(MARABOU_LOC,
@@ -43,7 +43,7 @@ def main():
             f.write("timeout\n")
             f.close()
 
-        #os.remove(ipqName)
+        os.remove(ipqName)
 
 def getInputQueryName(networkPath, propPath, benchmarkDir):
     netname = os.path.basename(networkPath)
