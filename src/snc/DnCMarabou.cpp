@@ -225,23 +225,22 @@ void DnCMarabou::solveNoDisjunction()
     std::unique_ptr<InputQuery> newInputQuery =
         std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
     std::unique_ptr<InputQuery> newInputQuery1 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
     std::unique_ptr<InputQuery> newInputQuery2 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
     std::unique_ptr<InputQuery> newInputQuery3 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
     std::unique_ptr<InputQuery> newInputQuery4 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
     std::unique_ptr<InputQuery> newInputQuery5 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
     std::unique_ptr<InputQuery> newInputQuery6 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
     std::unique_ptr<InputQuery> newInputQuery7 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
     std::unique_ptr<InputQuery> newInputQuery8 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
 
-    _inputQuery = InputQuery();
     std::mutex mtx;
     threads[0] = boost::thread( solveDnC, DnCArgument( &(*dncManager1), &mtx, 1, 16 ) );
     threads[1] = boost::thread( solveSingleThread, DnCArgument( &engine1, &(*newInputQuery1), &mtx, 1 ) );
@@ -265,7 +264,7 @@ void DnCMarabou::solveNoDisjunction()
         unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
         displayResults( totalElapsed );
 
-        for ( unsigned i = 0; i < 10; ++i )
+        for ( unsigned i = 1; i < 10; ++i )
         {
             pthread_kill(threads[i].native_handle(), 9);
             threads[i].join();
@@ -382,8 +381,11 @@ void DnCMarabou::solveSingleThread( DnCArgument argument )
     InputQuery *inputQuery = argument._inputQuery;
     std::mutex &mtx = *(argument._mtx);
     engine->_numWorkers = 1;
+
     engine->setVerbosity(0);
     printf( "Single thread starting... \n" );
+
+    engine->processInputQuery( *inputQuery, false );
     engine->solve(0);
     if ( engine->getExitCode() == Engine::SAT )
         engine->extractSolution( *inputQuery );

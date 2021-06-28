@@ -1497,43 +1497,80 @@ bool Engine::solveWithMILPEncoding( unsigned timeoutInSeconds )
         throw MarabouError( MarabouError::NETWORK_LEVEL_REASONER_NOT_AVAILABLE );
     }
 
-    for ( const auto & disj : _disjunctionConstraints )
+    if ( _disjunctionConstraints.size() == 0 )
     {
-        for ( const auto &split : disj->getCaseSplits() )
+        ENGINE_LOG( "Encoding the input query with Gurobi...\n" );
+        _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
+        _milpEncoder = std::unique_ptr<MILPEncoder>( new MILPEncoder( _boundManager ) );
+        _milpEncoder->encodeInputQuery( *_gurobi, _preprocessedQuery );
+        ENGINE_LOG( "Query encoded in Gurobi...\n" );
+
+        struct timespec end = TimeUtils::sampleMicro();
+        _statistics.incLongAttr( Statistics::TIME_ADDING_CONSTRAINTS_TO_LP_SOLVER_MICRO, TimeUtils::timePassed( start, end ) );
+
+        double timeoutForGurobi = ( timeoutInSeconds == 0 ? FloatUtils::infinity()
+                                    : timeoutInSeconds );
+        ENGINE_LOG( Stringf( "Gurobi timeout set to %f\n", timeoutForGurobi ).ascii() )
+        _gurobi->setTimeLimit( timeoutForGurobi );
+        _gurobi->setVerbosity( _verbosity );
+
+        _gurobi->solve( _numWorkers );
+
+        _statistics.setUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES, _gurobi->getNumberOfNodes() );
+
+        if ( _gurobi->haveFeasibleSolution() )
         {
-            _context.push();
-            applySplit( split );
-
-            ENGINE_LOG( "Encoding the input query with Gurobi...\n" );
-            _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
-            _milpEncoder = std::unique_ptr<MILPEncoder>( new MILPEncoder( _boundManager ) );
-            _milpEncoder->encodeInputQuery( *_gurobi, _preprocessedQuery );
-            ENGINE_LOG( "Query encoded in Gurobi...\n" );
-
-            struct timespec end = TimeUtils::sampleMicro();
-            _statistics.incLongAttr( Statistics::TIME_ADDING_CONSTRAINTS_TO_LP_SOLVER_MICRO, TimeUtils::timePassed( start, end ) );
-
-            double timeoutForGurobi = ( timeoutInSeconds == 0 ? FloatUtils::infinity()
-                                        : timeoutInSeconds );
-            ENGINE_LOG( Stringf( "Gurobi timeout set to %f\n", timeoutForGurobi ).ascii() )
-            _gurobi->setTimeLimit( timeoutForGurobi );
-            _gurobi->setVerbosity( _verbosity );
-
-            _gurobi->solve( _numWorkers );
-
-            _statistics.setUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES, _gurobi->getNumberOfNodes() );
-
-            _context.pop();
-
-            if ( _gurobi->haveFeasibleSolution() )
-            {
-                _exitCode = IEngine::SAT;
-                return true;
-            }
+            std::cout << "sat"<< std::endl;
+            _exitCode = IEngine::SAT;
+            return true;
+        }
+        else if ( _gurobi->infeasible() )
+        {
+            std::cout << "unsat"<< std::endl;
+            _exitCode = IEngine::UNSAT;
+            return false;
         }
     }
+    else
+    {
+        for ( const auto & disj : _disjunctionConstraints )
+        {
+            for ( const auto &split : disj->getCaseSplits() )
+            {
+                _context.push();
+                applySplit( split );
 
-    _exitCode = IEngine::UNSAT;
+                ENGINE_LOG( "Encoding the input query with Gurobi...\n" );
+                _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
+                _milpEncoder = std::unique_ptr<MILPEncoder>( new MILPEncoder( _boundManager ) );
+                _milpEncoder->encodeInputQuery( *_gurobi, _preprocessedQuery );
+                ENGINE_LOG( "Query encoded in Gurobi...\n" );
+
+                struct timespec end = TimeUtils::sampleMicro();
+                _statistics.incLongAttr( Statistics::TIME_ADDING_CONSTRAINTS_TO_LP_SOLVER_MICRO, TimeUtils::timePassed( start, end ) );
+
+                double timeoutForGurobi = ( timeoutInSeconds == 0 ? FloatUtils::infinity()
+                                            : timeoutInSeconds );
+                ENGINE_LOG( Stringf( "Gurobi timeout set to %f\n", timeoutForGurobi ).ascii() )
+                _gurobi->setTimeLimit( timeoutForGurobi );
+                _gurobi->setVerbosity( _verbosity );
+
+                _gurobi->solve( _numWorkers );
+
+                _statistics.setUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES, _gurobi->getNumberOfNodes() );
+
+                _context.pop();
+
+                if ( _gurobi->haveFeasibleSolution() )
+                {
+                    _exitCode = IEngine::SAT;
+                    return true;
+                }
+            }
+        }
+        _exitCode = IEngine::UNSAT;
+        return false;
+    }
     return false;
 }
 
