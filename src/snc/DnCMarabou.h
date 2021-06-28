@@ -64,12 +64,15 @@ private:
     std::unique_ptr<DnCManager> _dncManager;
     InputQuery _inputQuery;
     Engine _engine1;
-    Engine _engine2;
 
     /*
       Display the results
     */
     void displayResults( unsigned long long microSecondsElapsed ) const;
+
+    void solveDisjunction();
+
+    void solveNoDisjunction();
 
     static void solveDnC( DnCArgument argument );
 

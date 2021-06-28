@@ -95,8 +95,6 @@ void DnCMarabou::run()
       Step 3: initialize the DNC core
     */
 
-    struct timespec start = TimeUtils::sampleMicro();
-
     // 1. preprocess with 48 threads
     _engine1._numWorkers = 48;
     _engine1.setVerbosity(0);
@@ -116,52 +114,159 @@ void DnCMarabou::run()
 
     if ( _inputQuery.getDisjunctionConstraints().size() == 1 )
     {
-        boost::thread *threads = new boost::thread[5];
-        std::unique_ptr<DnCManager> dncManager1 = std::unique_ptr<DnCManager>
-            ( new DnCManager( _engine1.getInputQuery() ) );
-        std::unique_ptr<DnCManager> dncManager2 = std::unique_ptr<DnCManager>
-            ( new DnCManager( _engine1.getInputQuery() ) );
-        std::unique_ptr<DnCManager> dncManager3 = std::unique_ptr<DnCManager>
-            ( new DnCManager( _engine1.getInputQuery() ) );
-        std::unique_ptr<DnCManager> dncManager4 = std::unique_ptr<DnCManager>
-            ( new DnCManager( _engine1.getInputQuery() ) );
+        solveDisjunction();
+    }
+    else if ( _inputQuery.getDisjunctionConstraints().size() == 0 )
+    {
+        solveNoDisjunction();
+    }
+}
 
-        std::atomic_bool done (false);
-        dncManager1->setDone( &done );
-        dncManager2->setDone( &done );
-        dncManager3->setDone( &done );
-        dncManager4->setDone( &done );
-        _engine2.setDone( &done );
+void DnCMarabou::solveDisjunction()
+{
+    struct timespec start = TimeUtils::sampleMicro();
 
-        std::unique_ptr<InputQuery> newInputQuery =
-            std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    boost::thread *threads = new boost::thread[5];
+    std::unique_ptr<DnCManager> dncManager1 = std::unique_ptr<DnCManager>
+        ( new DnCManager( _engine1.getInputQuery() ) );
+    std::unique_ptr<DnCManager> dncManager2 = std::unique_ptr<DnCManager>
+        ( new DnCManager( _engine1.getInputQuery() ) );
+    std::unique_ptr<DnCManager> dncManager3 = std::unique_ptr<DnCManager>
+        ( new DnCManager( _engine1.getInputQuery() ) );
+    std::unique_ptr<DnCManager> dncManager4 = std::unique_ptr<DnCManager>
+        ( new DnCManager( _engine1.getInputQuery() ) );
 
-        std::mutex mtx;
-        DisjunctionConstraint *disj = *(_inputQuery.getDisjunctionConstraints().begin());
-        unsigned numDisj = disj->getCaseSplits().size();
-        std::cout << "number of disjunctions: " << numDisj << std::endl;
-        threads[0] = boost::thread( solveDnC, DnCArgument( &(*dncManager1), &mtx, 0, numDisj ) );
-        threads[1] = boost::thread( solveDnC, DnCArgument( &(*dncManager2), &mtx, 1, numDisj ) );
-        threads[2] = boost::thread( solveDnC, DnCArgument( &(*dncManager3), &mtx, 2, numDisj ) );
-        threads[3] = boost::thread( solveDnC, DnCArgument( &(*dncManager4), &mtx, 3, numDisj ) );
-        threads[4] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery), &mtx, 48 - 4 * numDisj ) );
+    std::atomic_bool done (false);
+    dncManager1->setDone( &done );
+    dncManager2->setDone( &done );
+    dncManager3->setDone( &done );
+    dncManager4->setDone( &done );
+    _engine1.setDone( &done );
 
-        boost::chrono::milliseconds waitTime( 100 );
-        while ( !done.load() )
-            boost::this_thread::sleep_for( waitTime );
+    std::unique_ptr<InputQuery> newInputQuery =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
 
-        if ( done.load() )
+    std::mutex mtx;
+    DisjunctionConstraint *disj = *(_inputQuery.getDisjunctionConstraints().begin());
+    unsigned numDisj = disj->getCaseSplits().size();
+    std::cout << "number of disjunctions: " << numDisj << std::endl;
+    threads[0] = boost::thread( solveDnC, DnCArgument( &(*dncManager1), &mtx, 0, numDisj ) );
+    threads[1] = boost::thread( solveDnC, DnCArgument( &(*dncManager2), &mtx, 1, numDisj ) );
+    threads[2] = boost::thread( solveDnC, DnCArgument( &(*dncManager3), &mtx, 2, numDisj ) );
+    threads[3] = boost::thread( solveDnC, DnCArgument( &(*dncManager4), &mtx, 3, numDisj ) );
+    threads[4] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery), &mtx, 48 - 4 * numDisj ) );
+
+    boost::chrono::milliseconds waitTime( 100 );
+    while ( !done.load() )
+        boost::this_thread::sleep_for( waitTime );
+
+    if ( done.load() )
+    {
+        struct timespec end = TimeUtils::sampleMicro();
+
+        unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
+        displayResults( totalElapsed );
+
+        for ( unsigned i = 0; i < 5; ++i )
         {
-            struct timespec end = TimeUtils::sampleMicro();
+            pthread_kill(threads[i].native_handle(), 9);
+            threads[i].join();
+        }
+    }
+}
 
-            unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
-            displayResults( totalElapsed );
+void DnCMarabou::solveNoDisjunction()
+{
+    struct timespec start = TimeUtils::sampleMicro();
 
-            for ( unsigned i = 0; i < 5; ++i )
-            {
-                pthread_kill(threads[i].native_handle(), 9);
-                threads[i].join();
-            }
+    boost::thread *threads = new boost::thread[10];
+    std::unique_ptr<DnCManager> dncManager1 = std::unique_ptr<DnCManager>
+        ( new DnCManager( _engine1.getInputQuery() ) );
+    Engine engine1;
+    Engine engine2;
+    Engine engine3;
+    Engine engine4;
+    Engine engine5;
+    Engine engine6;
+    Engine engine7;
+    Engine engine8;
+
+    engine1.setSeed(1);
+    engine2.setSeed(2);
+    engine3.setSeed(3);
+    engine4.setSeed(4);
+    engine5.setSeed(5);
+    engine6.setSeed(6);
+    engine7.setSeed(7);
+    engine8.setSeed(8);
+
+    engine1.setBranchingHeuristic(DivideStrategy::Polarity);
+    engine2.setBranchingHeuristic(DivideStrategy::Polarity);
+    engine3.setBranchingHeuristic(DivideStrategy::Polarity);
+    engine4.setBranchingHeuristic(DivideStrategy::SOI);
+    engine5.setBranchingHeuristic(DivideStrategy::SOI);
+    engine6.setBranchingHeuristic(DivideStrategy::SOI);
+    engine7.setBranchingHeuristic(DivideStrategy::SOI);
+    engine8.setBranchingHeuristic(DivideStrategy::SOI);
+
+    std::atomic_bool done (false);
+    dncManager1->setDone( &done );
+    _engine1.setDone( &done );
+    engine1.setDone( &done );
+    engine2.setDone( &done );
+    engine3.setDone( &done );
+    engine4.setDone( &done );
+    engine5.setDone( &done );
+    engine6.setDone( &done );
+    engine7.setDone( &done );
+    engine8.setDone( &done );
+
+    std::unique_ptr<InputQuery> newInputQuery =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    std::unique_ptr<InputQuery> newInputQuery1 =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    std::unique_ptr<InputQuery> newInputQuery2 =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    std::unique_ptr<InputQuery> newInputQuery3 =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    std::unique_ptr<InputQuery> newInputQuery4 =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    std::unique_ptr<InputQuery> newInputQuery5 =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    std::unique_ptr<InputQuery> newInputQuery6 =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    std::unique_ptr<InputQuery> newInputQuery7 =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+    std::unique_ptr<InputQuery> newInputQuery8 =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+
+    std::mutex mtx;
+    threads[0] = boost::thread( solveDnC, DnCArgument( &(*dncManager1), &mtx, 1, 16 ) );
+    threads[1] = boost::thread( solveSingleThread, DnCArgument( &engine1, &(*newInputQuery1), &mtx, 1 ) );
+    threads[2] = boost::thread( solveSingleThread, DnCArgument( &engine2, &(*newInputQuery2), &mtx, 1 ) );
+    threads[3] = boost::thread( solveSingleThread, DnCArgument( &engine3, &(*newInputQuery3), &mtx, 1 ) );
+    threads[4] = boost::thread( solveSingleThread, DnCArgument( &engine4, &(*newInputQuery4), &mtx, 1 ) );
+    threads[5] = boost::thread( solveSingleThread, DnCArgument( &engine5, &(*newInputQuery5), &mtx, 1 ) );
+    threads[6] = boost::thread( solveSingleThread, DnCArgument( &engine6, &(*newInputQuery6), &mtx, 1 ) );
+    threads[7] = boost::thread( solveSingleThread, DnCArgument( &engine7, &(*newInputQuery7), &mtx, 1 ) );
+    threads[8] = boost::thread( solveSingleThread, DnCArgument( &engine8, &(*newInputQuery8), &mtx, 1 ) );
+    threads[9] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery), &mtx, 24 ) );
+
+    boost::chrono::milliseconds waitTime( 100 );
+    while ( !done.load() )
+        boost::this_thread::sleep_for( waitTime );
+
+    if ( done.load() )
+    {
+        struct timespec end = TimeUtils::sampleMicro();
+
+        unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
+        displayResults( totalElapsed );
+
+        for ( unsigned i = 0; i < 10; ++i )
+        {
+            pthread_kill(threads[i].native_handle(), 9);
+            threads[i].join();
         }
     }
 }
@@ -172,6 +277,7 @@ void DnCMarabou::solveDnC( DnCArgument argument )
     std::mutex &mtx = *(argument._mtx);
     unsigned numDisj = argument._numDisj;
     unsigned id = argument._id;
+    std::cout << "SnC starting " << id << std::endl;
     if ( id == 0 )
         dncManager->solve( numDisj, 0 );
     else if ( id == 1 )
@@ -273,11 +379,10 @@ void DnCMarabou::solveSingleThread( DnCArgument argument )
     Engine *engine = argument._engine;
     InputQuery *inputQuery = argument._inputQuery;
     std::mutex &mtx = *(argument._mtx);
-
-    engine->setVerbosity(0);
     engine->_numWorkers = 1;
-    if ( engine->processInputQuery( *inputQuery ) )
-        engine->solve();
+    engine->setVerbosity(0);
+    printf( "Single thread starting... \n" );
+    engine->solve(0);
     if ( engine->getExitCode() == Engine::SAT )
         engine->extractSolution( *inputQuery );
 
