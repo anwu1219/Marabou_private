@@ -1,12 +1,5 @@
 #! /usr/bin/env bash
 
-apt-get update -y
-apt-get install sudo -y
-sudo apt-get update -y
-sudo apt-get install python3 -y
-sudo apt-get install python3-pip -y
-sudo apt-get install wget
-sudo apt-get install cmake
 
 script_name=$(realpath $0)
 script_path=$(dirname "$script_name")
@@ -31,10 +24,12 @@ cp libgurobi_c++.a ../../lib/
 echo "Project dir:" $project_path
 cd $project_path
 
+pip3 install onnx onnxruntime
+
 # install marabou
 rm -rf build
 mkdir build
 cd build
-cmake3 ../ -DENABLE_GUROBI=ON
+cmake ../ -DENABLE_GUROBI=ON
 make -j48
 cd ../
