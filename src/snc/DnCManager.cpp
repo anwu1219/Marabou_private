@@ -373,7 +373,7 @@ bool DnCManager::createEngines( unsigned numberOfEngines )
     // Create the base engine
     _baseEngine = std::make_shared<Engine>();
     _baseEngine->setVerbosity( 0 );
-    _baseEngine->_numWorkers = 16;
+    _baseEngine->_numWorkers = 24;
     if ( !_baseEngine->processInputQuery( *_baseInputQuery ) )
         // Solved by preprocessing, we are done!
         return false;

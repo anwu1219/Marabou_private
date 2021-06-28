@@ -162,7 +162,7 @@ void DnCMarabou::solveMILP( DnCArgument argument )
     std::mutex &mtx = *(argument._mtx);
     engine->_solveWithMILP = true;
 
-    engine->_numWorkers = 15;
+    engine->_numWorkers = 23;
     engine->setVerbosity(0);
     if ( engine->processInputQuery( *inputQuery ) )
         engine->solveWithMILPEncoding(0);
