@@ -137,6 +137,7 @@ void DnCMarabou::solveDnC( DnCArgument argument )
     std::mutex &mtx = *(argument._mtx);
     dncManager->solve();
     mtx.lock();
+    dncManager->printResult();
     std::cout << "Solved by DnC" << std::endl;
     String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
     File summaryFile( summaryFilePath );
@@ -160,7 +161,60 @@ void DnCMarabou::solveMILP( DnCArgument argument )
     engine->setVerbosity(0);
     if ( engine->processInputQuery( *inputQuery ) )
         engine->solveWithMILPEncoding(0);
+    if ( engine->getExitCode() == Engine::SAT )
+        engine->extractSolution( *inputQuery );
+
     mtx.lock();
+    Engine::ExitCode result = engine->getExitCode();
+
+    if ( result == Engine::UNSAT )
+    {
+        printf( "unsat\n" );
+    }
+    else if ( result == Engine::SAT )
+    {
+        if ( inputQuery->_networkLevelReasoner )
+        {
+            double *input = new double[inputQuery->getNumInputVariables()];
+            for ( unsigned i = 0; i < inputQuery->getNumInputVariables(); ++i )
+                input[i] = inputQuery->getSolutionValue( inputQuery->inputVariableByIndex( i ) );
+
+            NLR::NetworkLevelReasoner *nlr = inputQuery->_networkLevelReasoner;
+            NLR::Layer *lastLayer = nlr->getLayer( nlr->getNumberOfLayers() - 1 );
+            double *output = new double[lastLayer->getSize()];
+
+            nlr->evaluate( input, output );
+
+            printf( "\n" );
+            printf( "Output:\n" );
+            for ( unsigned i = 0; i < lastLayer->getSize(); ++i )
+                printf( "y%u = %lf\n", i, output[i] );
+            printf( "\n" );
+
+            printf( "sat\n" );
+        }
+        else
+        {
+            printf( "\n" );
+            printf( "Output:\n" );
+            for ( unsigned i = 0; i < inputQuery->getNumOutputVariables(); ++i )
+                printf( "y%u = %lf\n", i, inputQuery->getSolutionValue( inputQuery->outputVariableByIndex( i ) ) );
+            printf( "\n" );
+        }
+    }
+    else if ( result == Engine::TIMEOUT )
+    {
+        printf( "Timeout\n" );
+    }
+    else if ( result == Engine::ERROR )
+    {
+        printf( "Error\n" );
+    }
+    else
+    {
+        printf( "UNKNOWN EXIT CODE! (this should not happen)" );
+    }
+
     std::cout << "Solved by MILP" << std::endl;
     String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
     File summaryFile( summaryFilePath );
