@@ -150,6 +150,7 @@ void DnCMarabou::solveDisjunction()
     DisjunctionConstraint *disj = *(_inputQuery.getDisjunctionConstraints().begin());
     unsigned numDisj = disj->getCaseSplits().size();
     std::cout << "number of disjunctions: " << numDisj << std::endl;
+
     threads[0] = boost::thread( solveDnC, DnCArgument( &(*dncManager1), &mtx, 0, numDisj ) );
     threads[1] = boost::thread( solveDnC, DnCArgument( &(*dncManager2), &mtx, 1, numDisj ) );
     threads[2] = boost::thread( solveDnC, DnCArgument( &(*dncManager3), &mtx, 2, numDisj ) );
@@ -240,6 +241,7 @@ void DnCMarabou::solveNoDisjunction()
     std::unique_ptr<InputQuery> newInputQuery8 =
         std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
 
+    _inputQuery = InputQuery();
     std::mutex mtx;
     threads[0] = boost::thread( solveDnC, DnCArgument( &(*dncManager1), &mtx, 1, 16 ) );
     threads[1] = boost::thread( solveSingleThread, DnCArgument( &engine1, &(*newInputQuery1), &mtx, 1 ) );
