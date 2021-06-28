@@ -329,7 +329,7 @@ void DnCMarabou::solveNoDisjunction()
 {
     struct timespec start = TimeUtils::sampleMicro();
 
-    boost::thread *threads = new boost::thread[10];
+    boost::thread *threads = new boost::thread[17];
     std::unique_ptr<DnCManager> dncManager1 = std::unique_ptr<DnCManager>
         ( new DnCManager( _engine1.getInputQuery() ) );
     Engine engine1;
@@ -340,6 +340,14 @@ void DnCMarabou::solveNoDisjunction()
     Engine engine6;
     Engine engine7;
     Engine engine8;
+    Engine engine9;
+    Engine engine10;
+    Engine engine11;
+    Engine engine12;
+    Engine engine13;
+    Engine engine14;
+    Engine engine15;
+    Engine engine16;
 
     engine1.setSeed(1);
     engine2.setSeed(2);
@@ -349,15 +357,31 @@ void DnCMarabou::solveNoDisjunction()
     engine6.setSeed(6);
     engine7.setSeed(7);
     engine8.setSeed(8);
+    engine9.setSeed(9);
+    engine10.setSeed(10);
+    engine11.setSeed(11);
+    engine12.setSeed(12);
+    engine13.setSeed(13);
+    engine14.setSeed(14);
+    engine15.setSeed(15);
+    engine16.setSeed(16);
 
     engine1.setBranchingHeuristic(DivideStrategy::Polarity);
     engine2.setBranchingHeuristic(DivideStrategy::Polarity);
-    engine3.setBranchingHeuristic(DivideStrategy::Polarity);
-    engine4.setBranchingHeuristic(DivideStrategy::SOI);
-    engine5.setBranchingHeuristic(DivideStrategy::SOI);
-    engine6.setBranchingHeuristic(DivideStrategy::SOI);
-    engine7.setBranchingHeuristic(DivideStrategy::SOI);
-    engine8.setBranchingHeuristic(DivideStrategy::SOI);
+    engine3.setBranchingHeuristic(DivideStrategy::SOIPolarity);
+    engine4.setBranchingHeuristic(DivideStrategy::SOIPolarity);
+    engine5.setBranchingHeuristic(DivideStrategy::SOIPolarity);
+    engine6.setBranchingHeuristic(DivideStrategy::SOIPolarity);
+    engine7.setBranchingHeuristic(DivideStrategy::SOIPolarity);
+    engine8.setBranchingHeuristic(DivideStrategy::SOIPolarity);
+    engine9.setBranchingHeuristic(DivideStrategy::SOI);
+    engine10.setBranchingHeuristic(DivideStrategy::SOI);
+    engine11.setBranchingHeuristic(DivideStrategy::SOI);
+    engine12.setBranchingHeuristic(DivideStrategy::SOI);
+    engine13.setBranchingHeuristic(DivideStrategy::SOI);
+    engine14.setBranchingHeuristic(DivideStrategy::SOI);
+    engine15.setBranchingHeuristic(DivideStrategy::SOI);
+    engine16.setBranchingHeuristic(DivideStrategy::SOI);
 
     std::atomic_bool done (false);
     dncManager1->setDone( &done );
@@ -370,6 +394,14 @@ void DnCMarabou::solveNoDisjunction()
     engine6.setDone( &done );
     engine7.setDone( &done );
     engine8.setDone( &done );
+    engine9.setDone( &done );
+    engine10.setDone( &done );
+    engine11.setDone( &done );
+    engine12.setDone( &done );
+    engine13.setDone( &done );
+    engine14.setDone( &done );
+    engine15.setDone( &done );
+    engine16.setDone( &done );
 
     std::unique_ptr<InputQuery> newInputQuery =
         std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
@@ -389,18 +421,41 @@ void DnCMarabou::solveNoDisjunction()
         std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
     std::unique_ptr<InputQuery> newInputQuery8 =
         std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
+    std::unique_ptr<InputQuery> newInputQuery9 =
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
+    std::unique_ptr<InputQuery> newInputQuery10 =
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
+    std::unique_ptr<InputQuery> newInputQuery11 =
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
+    std::unique_ptr<InputQuery> newInputQuery12 =
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
+    std::unique_ptr<InputQuery> newInputQuery13 =
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
+    std::unique_ptr<InputQuery> newInputQuery14 =
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
+    std::unique_ptr<InputQuery> newInputQuery15 =
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
+    std::unique_ptr<InputQuery> newInputQuery16 =
+        std::unique_ptr<InputQuery>( new InputQuery( *_engine1.getInputQuery() ) );
 
     std::mutex mtx;
-    threads[0] = boost::thread( solveDnC, DnCArgument( &(*dncManager1), &mtx, 1, 16 ) );
-    threads[1] = boost::thread( solveSingleThread, DnCArgument( &engine1, &(*newInputQuery1), &mtx, 1 ) );
-    threads[2] = boost::thread( solveSingleThread, DnCArgument( &engine2, &(*newInputQuery2), &mtx, 1 ) );
-    threads[3] = boost::thread( solveSingleThread, DnCArgument( &engine3, &(*newInputQuery3), &mtx, 1 ) );
-    threads[4] = boost::thread( solveSingleThread, DnCArgument( &engine4, &(*newInputQuery4), &mtx, 1 ) );
-    threads[5] = boost::thread( solveSingleThread, DnCArgument( &engine5, &(*newInputQuery5), &mtx, 1 ) );
-    threads[6] = boost::thread( solveSingleThread, DnCArgument( &engine6, &(*newInputQuery6), &mtx, 1 ) );
-    threads[7] = boost::thread( solveSingleThread, DnCArgument( &engine7, &(*newInputQuery7), &mtx, 1 ) );
-    threads[8] = boost::thread( solveSingleThread, DnCArgument( &engine8, &(*newInputQuery8), &mtx, 1 ) );
-    threads[9] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery), &mtx, 24 ) );
+    threads[0] = boost::thread( solveSingleThread, DnCArgument( &engine1, &(*newInputQuery1), &mtx, 1 ) );
+    threads[1] = boost::thread( solveSingleThread, DnCArgument( &engine2, &(*newInputQuery2), &mtx, 1 ) );
+    threads[2] = boost::thread( solveSingleThread, DnCArgument( &engine3, &(*newInputQuery3), &mtx, 1 ) );
+    threads[3] = boost::thread( solveSingleThread, DnCArgument( &engine4, &(*newInputQuery4), &mtx, 1 ) );
+    threads[4] = boost::thread( solveSingleThread, DnCArgument( &engine5, &(*newInputQuery5), &mtx, 1 ) );
+    threads[5] = boost::thread( solveSingleThread, DnCArgument( &engine6, &(*newInputQuery6), &mtx, 1 ) );
+    threads[6] = boost::thread( solveSingleThread, DnCArgument( &engine7, &(*newInputQuery7), &mtx, 1 ) );
+    threads[7] = boost::thread( solveSingleThread, DnCArgument( &engine8, &(*newInputQuery8), &mtx, 1 ) );
+    threads[8] = boost::thread( solveSingleThread, DnCArgument( &engine9, &(*newInputQuery9), &mtx, 1 ) );
+    threads[9] = boost::thread( solveSingleThread, DnCArgument( &engine10, &(*newInputQuery10), &mtx, 1 ) );
+    threads[10] = boost::thread( solveSingleThread, DnCArgument( &engine11, &(*newInputQuery11), &mtx, 1 ) );
+    threads[11] = boost::thread( solveSingleThread, DnCArgument( &engine12, &(*newInputQuery12), &mtx, 1 ) );
+    threads[12] = boost::thread( solveSingleThread, DnCArgument( &engine13, &(*newInputQuery13), &mtx, 1 ) );
+    threads[13] = boost::thread( solveSingleThread, DnCArgument( &engine14, &(*newInputQuery14), &mtx, 1 ) );
+    threads[14] = boost::thread( solveSingleThread, DnCArgument( &engine15, &(*newInputQuery15), &mtx, 1 ) );
+    threads[15] = boost::thread( solveSingleThread, DnCArgument( &engine16, &(*newInputQuery16), &mtx, 1 ) );
+    threads[16] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery), &mtx, 32 ) );
 
     boost::chrono::milliseconds waitTime( 100 );
     while ( !done.load() )
@@ -413,7 +468,7 @@ void DnCMarabou::solveNoDisjunction()
         unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
         displayResults( totalElapsed );
 
-        for ( unsigned i = 1; i < 10; ++i )
+        for ( unsigned i = 0; i < 17; ++i )
         {
             pthread_kill(threads[i].native_handle(), 9);
             threads[i].join();
