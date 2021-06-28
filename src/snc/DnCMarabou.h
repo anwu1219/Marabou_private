@@ -74,6 +74,8 @@ private:
 
     void solveNoDisjunction();
 
+    void solveACASLike( InputQuery &inputQuery, DisjunctionConstraint *constraint );
+
     static void solveDnC( DnCArgument argument );
 
     static void solveMILP( DnCArgument argument );

@@ -38,6 +38,7 @@ Engine::Engine()
     : _solveWithMILP( Options::get()->getBool( Options::SOLVE_WITH_MILP ) )
     , _solutionFoundAndStoredInOriginalQuery( false )
     , _numWorkers( 1 )
+    , _constraintViolationThreshold( Options::get()->getInt( Options::CONSTRAINT_VIOLATION_THRESHOLD ) )
     , _context()
     , _boundManager( _context )
     , _rowBoundTightener( *_tableau, _boundManager )
@@ -56,7 +57,6 @@ Engine::Engine()
     , _costFunctionInitialized( false )
     , _scoreMetric( Options::get()->getString( Options::SCORE_METRIC ) )
     , _constructTableau( Options::get()->getBool( Options::CONSTRUCT_TABLEAU ) )
-    , _constraintViolationThreshold( Options::get()->getInt( Options::CONSTRAINT_VIOLATION_THRESHOLD ) )
     , _flippingStrategy( Options::get()->getString( Options::FLIPPING_STRATEGY ) )
     , _infiniteBoundsExists( false )
 {
@@ -88,9 +88,11 @@ void Engine::optimizeForHeuristicCost()
     Map<unsigned, double> &heuristicCost = _heuristicCostManager.getHeuristicCost();
     List<LPSolver::Term> terms;
     for ( const auto &term : heuristicCost )
+    {
         terms.append( LPSolver::Term( term.second,
                                            Stringf( "x%u", term.first ) ) );
-
+        std::cout << term.second << " " << Stringf( "x%u", term.first ).ascii() << std::endl;
+    }
     solveLPWithGurobi( terms );
 }
 
@@ -285,10 +287,13 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
                              TimeUtils::timePassed( start, end ) );
 
     for ( const auto &constraint : _plConstraints )
+    {
         constraint->registerGurobi( &( *_gurobi ) );
+    }
     _heuristicCostManager.setGurobi( &(*_gurobi) );
 
-    _costTracker.initialize( _plConstraints );
+    if ( _splittingStrategy != DivideStrategy::LargestInterval )
+        _costTracker.initialize( _plConstraints );
 
     mainLoopStatistics();
     if ( _verbosity > 0 )

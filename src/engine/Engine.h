@@ -214,6 +214,8 @@ public:
 
     unsigned _numWorkers;
 
+    unsigned _constraintViolationThreshold;
+
 private:
     enum BasisRestorationRequired {
         RESTORATION_NOT_NEEDED = 0,
@@ -452,8 +454,6 @@ private:
     String _scoreMetric;
 
     bool _constructTableau;
-
-    unsigned _constraintViolationThreshold;
 
     String _flippingStrategy;
 

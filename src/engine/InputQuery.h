@@ -147,6 +147,27 @@ public:
 
     void markOutputConstraints();
 
+    void removeDisjunctions()
+    {
+         _disjunctionConstraints.clear();
+
+         unsigned removed = 0;
+         List<PiecewiseLinearConstraint *> newPlConstraints;
+         for ( const auto &constraint : _plConstraints )
+         {
+             if ( constraint->getType() != DISJUNCTION )
+                 newPlConstraints.append( constraint );
+             else
+             {
+                 delete constraint;
+                 ++removed;
+             }
+         }
+         printf( "%u disjunctions removed\n", removed );
+         _plConstraints = newPlConstraints;
+         return;
+    }
+
 private:
     unsigned _numberOfVariables;
     List<Equation> _equations;
