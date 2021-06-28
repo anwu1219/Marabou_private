@@ -58,6 +58,7 @@ Engine::Engine()
     , _constructTableau( Options::get()->getBool( Options::CONSTRUCT_TABLEAU ) )
     , _constraintViolationThreshold( Options::get()->getInt( Options::CONSTRAINT_VIOLATION_THRESHOLD ) )
     , _flippingStrategy( Options::get()->getString( Options::FLIPPING_STRATEGY ) )
+    , _infiniteBoundsExists( false )
 {
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
@@ -68,6 +69,12 @@ Engine::Engine()
 
     _statistics.stampStartingTime();
 
+    std::srand( _seed );
+}
+
+void Engine::setSeed( unsigned seed )
+{
+    _seed = seed;
     std::srand( _seed );
 }
 
@@ -224,6 +231,7 @@ void Engine::informLPSolverOfBounds()
 
 bool Engine::performSimulation()
 {
+    return false;
     std::cout << "Performing simulation..." << std::endl;
     std::default_random_engine re;
     unsigned numberOfSimulations = 1000;
@@ -266,13 +274,6 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
     struct timespec mainLoopStart = TimeUtils::sampleMicro();
 
     _statistics.resetTimeStatsForMainLoop();
-
-    if ( _networkLevelReasoner && performSimulation() )
-    {
-        _solutionFoundAndStoredInOriginalQuery = true;
-        _exitCode = Engine::SAT;
-        return true;
-    }
 
     struct timespec start = TimeUtils::sampleMicro();
     _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
@@ -348,9 +349,6 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
             {
                 performBoundTightening();
                 splitJustPerformed = false;
-                for ( const auto &disjunction : _disjunctionConstraints )
-                    if ( disjunction->isActive() && !disjunction->phaseFixed() )
-                        _smtCore.requestSplit();
 
                 informLPSolverOfBounds();
 
@@ -518,9 +516,7 @@ void Engine::invokePreprocessor( const InputQuery &inputQuery, bool preprocess )
     unsigned infiniteBounds = _preprocessedQuery.countInfiniteBounds();
     if ( infiniteBounds != 0 )
     {
-        _exitCode = Engine::ERROR;
-        throw MarabouError( MarabouError::UNBOUNDED_VARIABLES_NOT_YET_SUPPORTED,
-                             Stringf( "Error! Have %u infinite bounds", infiniteBounds ).ascii() );
+        _infiniteBoundsExists = true;
     }
 }
 
@@ -912,8 +908,6 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
                                      _plConstraints.size() );
 
         _boundManager.initialize( _preprocessedQuery.getNumberOfVariables() );
-
-        _preprocessedQuery.markOutputConstraints();
 
         for ( unsigned i = 0; i < _preprocessedQuery.getNumberOfVariables(); ++i )
         {
@@ -1422,9 +1416,16 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraint()
 
     PiecewiseLinearConstraint *candidatePLConstraint = NULL;
     for ( const auto &disjunction : _disjunctionConstraints )
+    {
         if ( disjunction->isActive() && !disjunction->phaseFixed() )
+        {
+            std::cout << "Split on the disjunction!" << std::endl;
             candidatePLConstraint = disjunction;
+            disjunction->setActiveConstraint( false );
+            break;
+        }
 
+    }
     if ( candidatePLConstraint == NULL )
     {
         if ( _splittingStrategy == DivideStrategy::EarliestReLU )
@@ -1460,10 +1461,23 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraint()
 PiecewiseLinearConstraint *Engine::pickSplitPLConstraintSnC( SnCDivideStrategy strategy )
 {
     PiecewiseLinearConstraint *candidatePLConstraint = NULL;
-    if ( strategy == SnCDivideStrategy::Polarity )
-        candidatePLConstraint = pickSplitPLConstraintBasedOnPolarity();
-    else if ( strategy == SnCDivideStrategy::EarliestReLU )
-        candidatePLConstraint = pickSplitPLConstraintBasedOnTopology();
+    for ( const auto &disjunction : _disjunctionConstraints )
+    {
+        if ( disjunction->isActive() && !disjunction->phaseFixed() )
+        {
+            std::cout << "SnC: Split on the disjunction!" << std::endl;
+            candidatePLConstraint = disjunction;
+            disjunction->setActiveConstraint( false );
+            break;
+        }
+    }
+    if ( candidatePLConstraint == NULL )
+    {
+        if ( strategy == SnCDivideStrategy::Polarity )
+            candidatePLConstraint = pickSplitPLConstraintBasedOnPolarity();
+        else if ( strategy == SnCDivideStrategy::EarliestReLU )
+            candidatePLConstraint = pickSplitPLConstraintBasedOnTopology();
+    }
 
     ENGINE_LOG( Stringf( "Done updating scores..." ).ascii() );
     ENGINE_LOG( Stringf( ( candidatePLConstraint ?
@@ -1475,37 +1489,49 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintSnC( SnCDivideStrategy s
 bool Engine::solveWithMILPEncoding( unsigned timeoutInSeconds )
 {
     struct timespec start = TimeUtils::sampleMicro();
-    ENGINE_LOG( "Encoding the input query with Gurobi...\n" );
-    _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
-    _milpEncoder = std::unique_ptr<MILPEncoder>( new MILPEncoder( _boundManager ) );
-    _milpEncoder->encodeInputQuery( *_gurobi, _preprocessedQuery );
-    ENGINE_LOG( "Query encoded in Gurobi...\n" );
-
-    struct timespec end = TimeUtils::sampleMicro();
-    _statistics.incLongAttr( Statistics::TIME_ADDING_CONSTRAINTS_TO_LP_SOLVER_MICRO, TimeUtils::timePassed( start, end ) );
-
-    double timeoutForGurobi = ( timeoutInSeconds == 0 ? FloatUtils::infinity()
-                                : timeoutInSeconds );
-    ENGINE_LOG( Stringf( "Gurobi timeout set to %f\n", timeoutForGurobi ).ascii() )
-    _gurobi->setTimeLimit( timeoutForGurobi );
-    _gurobi->setVerbosity( _verbosity );
-
-    _gurobi->solve( _numWorkers );
-
-    _statistics.setUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES, _gurobi->getNumberOfNodes() );
-    if ( _verbosity > 0 )
-        _statistics.print();
-    if ( _gurobi->haveFeasibleSolution() )
+    if ( _disjunctionConstraints.size() > 1 )
     {
-        _exitCode = IEngine::SAT;
-        return true;
+        std::cout << "more than 1 disjunctions!" << std::endl;
+        throw MarabouError( MarabouError::NETWORK_LEVEL_REASONER_NOT_AVAILABLE );
     }
-    else if ( _gurobi->infeasible() )
-        _exitCode = IEngine::UNSAT;
-    else if ( _gurobi->timeout() )
-        _exitCode = IEngine::TIMEOUT;
-    else
-        throw NLRError( NLRError::UNEXPECTED_RETURN_STATUS_FROM_GUROBI );
+
+    for ( const auto & disj : _disjunctionConstraints )
+    {
+        for ( const auto &split : disj->getCaseSplits() )
+        {
+            _context.push();
+            applySplit( split );
+
+            ENGINE_LOG( "Encoding the input query with Gurobi...\n" );
+            _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
+            _milpEncoder = std::unique_ptr<MILPEncoder>( new MILPEncoder( _boundManager ) );
+            _milpEncoder->encodeInputQuery( *_gurobi, _preprocessedQuery );
+            ENGINE_LOG( "Query encoded in Gurobi...\n" );
+
+            struct timespec end = TimeUtils::sampleMicro();
+            _statistics.incLongAttr( Statistics::TIME_ADDING_CONSTRAINTS_TO_LP_SOLVER_MICRO, TimeUtils::timePassed( start, end ) );
+
+            double timeoutForGurobi = ( timeoutInSeconds == 0 ? FloatUtils::infinity()
+                                        : timeoutInSeconds );
+            ENGINE_LOG( Stringf( "Gurobi timeout set to %f\n", timeoutForGurobi ).ascii() )
+            _gurobi->setTimeLimit( timeoutForGurobi );
+            _gurobi->setVerbosity( _verbosity );
+
+            _gurobi->solve( _numWorkers );
+
+            _statistics.setUnsignedAttr( Statistics::NUM_VISITED_TREE_STATES, _gurobi->getNumberOfNodes() );
+
+            _context.pop();
+
+            if ( _gurobi->haveFeasibleSolution() )
+            {
+                _exitCode = IEngine::SAT;
+                return true;
+            }
+        }
+    }
+
+    _exitCode = IEngine::UNSAT;
     return false;
 }
 

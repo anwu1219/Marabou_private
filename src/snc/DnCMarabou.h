@@ -29,23 +29,28 @@ class DnCMarabou
 {
 public:
     struct DnCArgument{
-        DnCArgument( Engine *engine, InputQuery *inputQuery, std::mutex *mtx )
+        DnCArgument( Engine *engine, InputQuery *inputQuery, std::mutex *mtx, unsigned numDisj )
             : _mtx( mtx )
         {
             _engine = engine;
             _inputQuery = inputQuery;
+            _numDisj = numDisj;
         }
 
-        DnCArgument( DnCManager *dncManager, std::mutex *mtx )
+        DnCArgument( DnCManager *dncManager, std::mutex *mtx, unsigned id, unsigned numDisj )
             : _mtx( mtx )
         {
             _dncManager = dncManager;
+            _id = id;
+            _numDisj = numDisj;
         }
 
         DnCManager *_dncManager = NULL;
         Engine *_engine;
         InputQuery *_inputQuery;
         std::mutex *_mtx;
+        unsigned _id = 0;
+        unsigned _numDisj = 0;
     };
 
     DnCMarabou();

@@ -55,7 +55,6 @@ void MILPEncoder::encodeInputQuery( LPSolver &gurobi,
             encodeMaxConstraint( gurobi, (MaxConstraint *)plConstraint );
             break;
         case PiecewiseLinearFunctionType::DISJUNCTION:
-            encodeDisjConstraint( gurobi, (DisjunctionConstraint *)plConstraint );
             break;
 
         default:

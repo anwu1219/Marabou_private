@@ -14,6 +14,7 @@
  **/
 
 #include "Debug.h"
+#include "DivideStrategy.h"
 #include "SnCDivideStrategy.h"
 #include "DnCManager.h"
 #include "DnCWorker.h"
@@ -60,7 +61,7 @@ void DnCManager::dncSolve( WorkerQueue *workload, std::shared_ptr<Engine> engine
 }
 
 DnCManager::DnCManager( InputQuery *inputQuery )
-    : _baseInputQuery( inputQuery )
+    : _baseInputQuery( *inputQuery )
     , _exitCode( DnCManager::NOT_DONE )
     , _workload( NULL )
     , _timeoutReached( false )
@@ -108,7 +109,7 @@ void DnCManager::freeMemoryIfNeeded()
     }
 }
 
-void DnCManager::solve()
+void DnCManager::solve( unsigned resources, unsigned id )
 {
     enum {
         MICROSECONDS_IN_SECOND = 1000000
@@ -120,14 +121,14 @@ void DnCManager::solve()
 
     struct timespec startTime = TimeUtils::sampleMicro();
 
-    unsigned numWorkers = 24;
-
+    unsigned numWorkers = resources;
     // Preprocess the input query and create an engine for each of the threads
-    if ( !createEngines( numWorkers ) )
+    if ( !createEngines( numWorkers, id ) )
     {
         _exitCode = DnCManager::UNSAT;
         return;
     }
+
     // Prepare the mechanism through which we can ask the engines to quit
     List<std::atomic_bool *> quitThreads;
     for ( unsigned i = 0; i < numWorkers; ++i )
@@ -332,7 +333,7 @@ void DnCManager::printResult()
             inputs[i] = inputQuery->getSolutionValue( inputQuery->inputVariableByIndex( i ) );
         }
 
-        NLR::NetworkLevelReasoner *nlr = _baseInputQuery->getNetworkLevelReasoner();
+        NLR::NetworkLevelReasoner *nlr = _baseInputQuery.getNetworkLevelReasoner();
         if ( nlr )
             nlr->evaluate( inputs, outputs );
 
@@ -368,21 +369,33 @@ void DnCManager::printResult()
     }
 }
 
-bool DnCManager::createEngines( unsigned numberOfEngines )
+bool DnCManager::createEngines( unsigned numberOfEngines, unsigned id )
 {
     // Create the base engine
     _baseEngine = std::make_shared<Engine>();
     _baseEngine->setVerbosity( 0 );
-    _baseEngine->_numWorkers = 24;
-    if ( !_baseEngine->processInputQuery( *_baseInputQuery ) )
+    _baseEngine->_numWorkers = numberOfEngines;
+
+    if ( !_baseEngine->processInputQuery( _baseInputQuery ) )
+    {
         // Solved by preprocessing, we are done!
         return false;
-
+    }
+    std::cout << "here" << std::endl;
     // Create engines for each thread
     for ( unsigned i = 0; i < numberOfEngines; ++i )
     {
         auto engine = std::make_shared<Engine>();
         engine->setVerbosity( 0 );
+        if ( id == 0 || id == 1 )
+            engine->setSeed( 1995 );
+        else if ( id == 2 || id == 3 )
+            engine->setSeed( 1219 );
+        if ( id == 0 || id == 2 )
+            engine->setBranchingHeuristic( DivideStrategy::Polarity );
+        else if ( id == 1 || id == 3 )
+            engine->setBranchingHeuristic( DivideStrategy::SOI );
+
         engine->_numWorkers = 1;
         _engines.append( engine );
     }

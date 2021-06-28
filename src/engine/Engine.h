@@ -127,6 +127,13 @@ public:
     */
     void clearViolatedPLConstraints();
 
+    void setSeed( unsigned seed );
+
+    void setBranchingHeuristic( DivideStrategy strategy )
+    {
+        _splittingStrategy = strategy;
+    }
+
     /*
       Set the Engine's level of verbosity
     */
@@ -449,6 +456,8 @@ private:
     unsigned _constraintViolationThreshold;
 
     String _flippingStrategy;
+
+    bool _infiniteBoundsExists;
 
     void performBoundTightening();
 

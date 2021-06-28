@@ -50,7 +50,7 @@ public:
     /*
       Perform the Divide-and-conquer solving
     */
-    void solve();
+    void solve( unsigned resources =1, unsigned id = 0 );
 
     /*
       Return the DnCExitCode of the DnCManager
@@ -95,7 +95,7 @@ private:
       Create the base engine from the network and property files,
       and if necessary, create engines for workers
     */
-    bool createEngines( unsigned numberOfEngines );
+    bool createEngines( unsigned numberOfEngines, unsigned id  );
 
     /*
       Divide up the input region and store them in subqueries
@@ -133,7 +133,7 @@ private:
       Alternatively, we could construct the DnCManager by directly providing the
       inputQuery instead of the network and property filepaths.
     */
-    InputQuery *_baseInputQuery;
+    InputQuery _baseInputQuery;
 
     /*
       The exit code of the DnCManager.

@@ -97,40 +97,70 @@ void DnCMarabou::run()
 
     struct timespec start = TimeUtils::sampleMicro();
 
-    boost::thread *threads = new boost::thread[3];
-    _dncManager = std::unique_ptr<DnCManager>
-        ( new DnCManager( &_inputQuery ) );
-    std::atomic_bool done (false);
-    _dncManager->setDone( &done );
-    _engine1.setDone( &done );
-    _engine2.setDone( &done );
-
-    std::unique_ptr<InputQuery> newInputQuery1 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
-    std::unique_ptr<InputQuery> newInputQuery2 =
-        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
-
-    std::mutex mtx;
-
-    threads[0] = boost::thread( solveDnC, DnCArgument( &(*_dncManager), &mtx ) );
-    threads[1] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery1), &mtx ) );
-    threads[2] = boost::thread( solveSingleThread, DnCArgument( &_engine2, &(*newInputQuery2), &mtx ) );
-    
-    boost::chrono::milliseconds waitTime( 100 );
-    while ( !done.load() )
-        boost::this_thread::sleep_for( waitTime );
-
-    if ( done.load() )
+    // 1. preprocess with 48 threads
+    _engine1._numWorkers = 48;
+    _engine1.setVerbosity(0);
+    if ( !_engine1.processInputQuery( _inputQuery ) )
     {
-        struct timespec end = TimeUtils::sampleMicro();
+        std::cout << "Solved by preprocessing" << std::endl;
+        String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+        File summaryFile( summaryFilePath );
+        summaryFile.open( File::MODE_WRITE_TRUNCATE );
+        summaryFile.write( "holds\n" );
+        return;
+    }
 
-        unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
-        displayResults( totalElapsed );
+    // If disjunction exists
+    // 1. # disj * ( SOI + Polarity ) * (2 seed)
+    // 2. rest goes to Gurobi
+    if ( _inputQuery.getDisjunctionConstraints().size() == 1 )
+    {
+        boost::thread *threads = new boost::thread[5];
+        std::unique_ptr<DnCManager> dncManager1 = std::unique_ptr<DnCManager>
+            ( new DnCManager( &_inputQuery ) );
+        std::unique_ptr<DnCManager> dncManager2 = std::unique_ptr<DnCManager>
+            ( new DnCManager( &_inputQuery ) );
+        std::unique_ptr<DnCManager> dncManager3 = std::unique_ptr<DnCManager>
+            ( new DnCManager( &_inputQuery ) );
+        std::unique_ptr<DnCManager> dncManager4 = std::unique_ptr<DnCManager>
+            ( new DnCManager( &_inputQuery ) );
 
-        for ( unsigned i = 0; i < 3; ++i )
+        std::atomic_bool done (false);
+        dncManager1->setDone( &done );
+        dncManager2->setDone( &done );
+        dncManager3->setDone( &done );
+        dncManager4->setDone( &done );
+        _engine2.setDone( &done );
+
+        std::unique_ptr<InputQuery> newInputQuery =
+            std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+
+        std::mutex mtx;
+        DisjunctionConstraint *disj = *(_inputQuery.getDisjunctionConstraints().begin());
+        unsigned numDisj = disj->getCaseSplits().size();
+        std::cout << "number of disjunctions: " << numDisj << std::endl;
+        threads[0] = boost::thread( solveDnC, DnCArgument( &(*dncManager1), &mtx, 0, numDisj ) );
+        threads[1] = boost::thread( solveDnC, DnCArgument( &(*dncManager2), &mtx, 1, numDisj ) );
+        threads[2] = boost::thread( solveDnC, DnCArgument( &(*dncManager3), &mtx, 2, numDisj ) );
+        threads[3] = boost::thread( solveDnC, DnCArgument( &(*dncManager4), &mtx, 3, numDisj ) );
+        threads[4] = boost::thread( solveMILP, DnCArgument( &_engine2, &(*newInputQuery), &mtx, 48 - 4 * numDisj ) );
+
+        boost::chrono::milliseconds waitTime( 100 );
+        while ( !done.load() )
+            boost::this_thread::sleep_for( waitTime );
+
+        if ( done.load() )
         {
-            pthread_kill(threads[i].native_handle(), 9);
-            threads[i].join();
+            struct timespec end = TimeUtils::sampleMicro();
+
+            unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
+            displayResults( totalElapsed );
+
+            for ( unsigned i = 0; i < 5; ++i )
+            {
+                pthread_kill(threads[i].native_handle(), 9);
+                threads[i].join();
+            }
         }
     }
 }
@@ -139,10 +169,19 @@ void DnCMarabou::solveDnC( DnCArgument argument )
 {
     DnCManager *dncManager = argument._dncManager;
     std::mutex &mtx = *(argument._mtx);
-    dncManager->solve();
+    unsigned numDisj = argument._numDisj;
+    unsigned id = argument._id;
+    if ( id == 0 )
+        dncManager->solve( numDisj, 0 );
+    else if ( id == 1 )
+        dncManager->solve( numDisj, 1 );
+    else if ( id == 2 )
+        dncManager->solve( numDisj, 2 );
+    else if ( id == 3 )
+        dncManager->solve( numDisj, 3 );
     mtx.lock();
     dncManager->printResult();
-    std::cout << "Solved by DnC" << std::endl;
+    std::cout << "Solved by DnC " << id << std::endl;
     String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
     File summaryFile( summaryFilePath );
     summaryFile.open( File::MODE_WRITE_TRUNCATE );
@@ -161,11 +200,12 @@ void DnCMarabou::solveMILP( DnCArgument argument )
     InputQuery *inputQuery = argument._inputQuery;
     std::mutex &mtx = *(argument._mtx);
     engine->_solveWithMILP = true;
-
-    engine->_numWorkers = 23;
+    unsigned numDisj = argument._numDisj;
+    std::cout << "MILP threads: " << numDisj << std::endl;
+    engine->_numWorkers = numDisj;
     engine->setVerbosity(0);
     if ( engine->processInputQuery( *inputQuery ) )
-        engine->solveWithMILPEncoding(0);
+         engine->solveWithMILPEncoding(0);
     if ( engine->getExitCode() == Engine::SAT )
         engine->extractSolution( *inputQuery );
 

@@ -24,7 +24,7 @@ PolarityBasedDivider::PolarityBasedDivider( std::shared_ptr<IEngine> engine )
 {
 }
 
-void PolarityBasedDivider::createSubQueries( unsigned numNewSubqueries, const
+void PolarityBasedDivider::createSubQueries( unsigned , const
                                              String queryIdPrefix, const
                                              unsigned previousDepth, const
                                              PiecewiseLinearCaseSplit
@@ -32,7 +32,7 @@ void PolarityBasedDivider::createSubQueries( unsigned numNewSubqueries, const
                                              timeoutInSeconds, SubQueries
                                              &subQueries )
 {
-    unsigned numBisects = (unsigned)log2( numNewSubqueries );
+    unsigned numBisects = 1;
 
     List<PiecewiseLinearCaseSplit *> splits;
     auto split = new PiecewiseLinearCaseSplit();
@@ -91,14 +91,10 @@ void PolarityBasedDivider::createSubQueries( unsigned numNewSubqueries, const
 }
 
 PiecewiseLinearConstraint *PolarityBasedDivider::getPLConstraintToSplit
-( const PiecewiseLinearCaseSplit &split )
+( const PiecewiseLinearCaseSplit & )
 {
-    _engine->pushContext();
-    _engine->applySplit( split );
-
     PiecewiseLinearConstraint *constraintToSplit = NULL;
     constraintToSplit = _engine->pickSplitPLConstraintSnC( SnCDivideStrategy::Polarity );
-    _engine->popContext();
     return constraintToSplit;
 }
 
