@@ -220,8 +220,12 @@ void Engine::informLPSolverOfBounds()
     struct timespec start = TimeUtils::sampleMicro();
     for ( unsigned i = 0; i < _preprocessedQuery.getNumberOfVariables(); ++i )
     {
-        _gurobi->setLowerBound( Stringf( "x%u", i ), _boundManager.getLowerBound( i ) );
-        _gurobi->setUpperBound( Stringf( "x%u", i ), _boundManager.getUpperBound( i ) );
+        double lb = _boundManager.getLowerBound( i );
+        if ( FloatUtils::isFinite( lb ) )
+            _gurobi->setLowerBound( Stringf( "x%u", i ), lb );
+        double ub = _boundManager.getUpperBound( i );
+        if ( FloatUtils::isFinite( ub ) )
+            _gurobi->setUpperBound( Stringf( "x%u", i ), ub );
     }
     _gurobi->updateModel();
     struct timespec end = TimeUtils::sampleMicro();
