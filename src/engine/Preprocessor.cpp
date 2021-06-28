@@ -95,7 +95,7 @@ InputQuery Preprocessor::preprocess( const InputQuery &query, bool attemptVariab
 
     unsigned iter = 0;
     bool continueTightening = true;
-    while ( continueTightening && ( iter++ < 2 || _preprocessed.getPiecewiseLinearConstraints().size() < 10000 ) )
+    while ( continueTightening && ( iter++ < 2 || _preprocessed.getPiecewiseLinearConstraints().size() < 500 ) )
     {
         std::cout << "Preprocessing..." << std::endl;
         continueTightening = processEquations();
