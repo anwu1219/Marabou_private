@@ -113,6 +113,7 @@ void DnCMarabou::run()
     // If disjunction exists
     // 1. # disj * ( SOI + Polarity ) * (2 seed)
     // 2. rest goes to Gurobi
+
     if ( _inputQuery.getDisjunctionConstraints().size() == 1 )
     {
         boost::thread *threads = new boost::thread[5];
@@ -143,7 +144,7 @@ void DnCMarabou::run()
         threads[1] = boost::thread( solveDnC, DnCArgument( &(*dncManager2), &mtx, 1, numDisj ) );
         threads[2] = boost::thread( solveDnC, DnCArgument( &(*dncManager3), &mtx, 2, numDisj ) );
         threads[3] = boost::thread( solveDnC, DnCArgument( &(*dncManager4), &mtx, 3, numDisj ) );
-        threads[4] = boost::thread( solveMILP, DnCArgument( &_engine2, &(*newInputQuery), &mtx, 48 - 4 * numDisj ) );
+        threads[4] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery), &mtx, 48 - 4 * numDisj ) );
 
         boost::chrono::milliseconds waitTime( 100 );
         while ( !done.load() )
@@ -204,8 +205,7 @@ void DnCMarabou::solveMILP( DnCArgument argument )
     std::cout << "MILP threads: " << numDisj << std::endl;
     engine->_numWorkers = numDisj;
     engine->setVerbosity(0);
-    if ( engine->processInputQuery( *inputQuery ) )
-         engine->solveWithMILPEncoding(0);
+    engine->solveWithMILPEncoding(0);
     if ( engine->getExitCode() == Engine::SAT )
         engine->extractSolution( *inputQuery );
 
