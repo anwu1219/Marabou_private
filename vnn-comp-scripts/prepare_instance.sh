@@ -5,21 +5,14 @@ benchmark=$2
 onnx=$3
 vnnlib=$4
 
-benchmark_dir=$(realpath ./benchmarks/)
 
-if [[ $onnx == *"gz" ]]
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+benchmark_dir=$(realpath "$SCRIPT_DIR"/benchmarks/)
+
+if [[ ! -d $benchmark_dir ]]
 then
-    echo "gz file..."
-    onnx=${onnx::-3}
-    echo $onnx
-    if [ -f $onnx ]
-    then
-        echo "onnx file exists!"
-    else
-        echo "unzipping..."
-        gzip -dk $onnx".gz"
-        echo "unzipping - done"
-    fi
+    mkdir $benchmark_dir
 fi
 
-./../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
+"$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
