@@ -117,13 +117,13 @@ void DnCMarabou::run()
     {
         boost::thread *threads = new boost::thread[5];
         std::unique_ptr<DnCManager> dncManager1 = std::unique_ptr<DnCManager>
-            ( new DnCManager( &_inputQuery ) );
+            ( new DnCManager( _engine1.getInputQuery() ) );
         std::unique_ptr<DnCManager> dncManager2 = std::unique_ptr<DnCManager>
-            ( new DnCManager( &_inputQuery ) );
+            ( new DnCManager( _engine1.getInputQuery() ) );
         std::unique_ptr<DnCManager> dncManager3 = std::unique_ptr<DnCManager>
-            ( new DnCManager( &_inputQuery ) );
+            ( new DnCManager( _engine1.getInputQuery() ) );
         std::unique_ptr<DnCManager> dncManager4 = std::unique_ptr<DnCManager>
-            ( new DnCManager( &_inputQuery ) );
+            ( new DnCManager( _engine1.getInputQuery() ) );
 
         std::atomic_bool done (false);
         dncManager1->setDone( &done );

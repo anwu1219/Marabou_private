@@ -326,14 +326,14 @@ void DnCManager::printResult()
         double *inputs( inputVector.data() );
         double *outputs( outputVector.data() );
 
-        printf( "Input assignment:\n" );
+        //printf( "Input assignment:\n" );
         for ( unsigned i = 0; i < inputQuery->getNumInputVariables(); ++i )
         {
-            printf( "x%u = %lf\n", i, inputQuery->getSolutionValue( inputQuery->inputVariableByIndex( i ) ) );
+            //printf( "x%u = %lf\n", i, inputQuery->getSolutionValue( inputQuery->inputVariableByIndex( i ) ) );
             inputs[i] = inputQuery->getSolutionValue( inputQuery->inputVariableByIndex( i ) );
         }
 
-        NLR::NetworkLevelReasoner *nlr = _baseInputQuery.getNetworkLevelReasoner();
+        NLR::NetworkLevelReasoner *nlr = inputQuery->getNetworkLevelReasoner();
         if ( nlr )
             nlr->evaluate( inputs, outputs );
 
@@ -376,12 +376,8 @@ bool DnCManager::createEngines( unsigned numberOfEngines, unsigned id )
     _baseEngine->setVerbosity( 0 );
     _baseEngine->_numWorkers = numberOfEngines;
 
-    if ( !_baseEngine->processInputQuery( _baseInputQuery ) )
-    {
-        // Solved by preprocessing, we are done!
-        return false;
-    }
-    std::cout << "here" << std::endl;
+    _baseEngine->processInputQuery( _baseInputQuery, false );
+
     // Create engines for each thread
     for ( unsigned i = 0; i < numberOfEngines; ++i )
     {
