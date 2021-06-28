@@ -167,7 +167,7 @@ void DnCMarabou::solveDisjunction()
         unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
         displayResults( totalElapsed );
 
-        for ( unsigned i = 0; i < 5; ++i )
+        for ( unsigned i = 0; i < 1; ++i )
         {
             pthread_kill(threads[i].native_handle(), 9);
             threads[i].join();
