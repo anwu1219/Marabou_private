@@ -347,7 +347,8 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
                     _statistics.print();
             if ( splitJustPerformed )
             {
-                performBoundTightening();
+                if ( _smtCore.getStackDepth() != 0 )
+                    performBoundTightening();
                 splitJustPerformed = false;
 
                 informLPSolverOfBounds();
@@ -516,6 +517,7 @@ void Engine::invokePreprocessor( const InputQuery &inputQuery, bool preprocess )
     unsigned infiniteBounds = _preprocessedQuery.countInfiniteBounds();
     if ( infiniteBounds != 0 )
     {
+        std::cout << "have infinite bounds" << std::endl;
         _infiniteBoundsExists = true;
     }
 }

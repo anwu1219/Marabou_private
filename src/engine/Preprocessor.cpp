@@ -93,9 +93,11 @@ InputQuery Preprocessor::preprocess( const InputQuery &query, bool attemptVariab
       Then, eliminate fixed variables.
     */
 
+    unsigned iter = 0;
     bool continueTightening = true;
-    while ( continueTightening )
+    while ( continueTightening && iter++ < 3 )
     {
+        std::cout << "Preprocessing..." << std::endl;
         continueTightening = processEquations();
         continueTightening = processConstraints() || continueTightening;
         if ( attemptVariableElimination )
