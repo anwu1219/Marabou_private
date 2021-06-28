@@ -5,7 +5,7 @@ benchmark=$2
 onnx=$3
 vnnlib=$4
 
-benchmark_dir=$(realpath ../benchmarks/)
+benchmark_dir=$(realpath ./benchmarks/)
 
 if [[ $onnx == *"gz" ]]
 then
