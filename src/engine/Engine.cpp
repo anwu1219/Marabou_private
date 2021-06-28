@@ -32,6 +32,8 @@
 #include <cstdlib>
 #include <string.h>
 
+#include "cblas.h"
+
 Engine::Engine()
     : _solveWithMILP( Options::get()->getBool( Options::SOLVE_WITH_MILP ) )
     , _context()
@@ -883,7 +885,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
         if ( preprocess )
         {
-            performSymbolicBoundTightening();
+            performSymbolicBoundTightening(16);
             performMILPSolverBoundedTightening();
         }
 
@@ -1084,13 +1086,15 @@ void Engine::tightenBoundsOnConstraintMatrix()
                              TimeUtils::timePassed( start, end ) );
 }
 
-void Engine::performSymbolicBoundTightening()
+void Engine::performSymbolicBoundTightening( unsigned numWorkers )
 {
+    struct timespec start = TimeUtils::sampleMicro();
+
+    openblas_set_num_threads( numWorkers );
+
     if ( _symbolicBoundTighteningType == SymbolicBoundTighteningType::NONE ||
          ( !_networkLevelReasoner ) )
         return;
-
-    struct timespec start = TimeUtils::sampleMicro();
 
     unsigned numTightenedBounds = 0;
 
@@ -1427,16 +1431,6 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintSnC( SnCDivideStrategy s
 
 bool Engine::solveWithMILPEncoding( unsigned timeoutInSeconds )
 {
-    try
-    {
-        performBoundTightening();
-    }
-    catch ( const InfeasibleQueryException & )
-    {
-        _exitCode = Engine::UNSAT;
-        return false;
-    }
-
     struct timespec start = TimeUtils::sampleMicro();
     ENGINE_LOG( "Encoding the input query with Gurobi...\n" );
     _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );

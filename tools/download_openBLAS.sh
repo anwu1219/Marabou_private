@@ -10,7 +10,7 @@ echo "Unzipping openBLAS"
 tar -xzf OpenBLASv0.3.9.tar.gz >> /dev/null
 echo "Installing openBLAS"
 cd OpenBLAS-0.3.9
-make NO_SHARED=1 CBLAS_ONLY=1 USE_THREAD=0 >> /dev/null
+make NO_SHARED=1 CBLAS_ONLY=1 USE_THREAD=1 -j16 >> /dev/null
 mkdir installed/
 make PREFIX=installed NO_SHARED=1 install >> /dev/null
 cd $curdir

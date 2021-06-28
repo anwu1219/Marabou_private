@@ -128,7 +128,6 @@ void DnCManager::solve()
         _exitCode = DnCManager::UNSAT;
         return;
     }
-
     // Prepare the mechanism through which we can ask the engines to quit
     List<std::atomic_bool *> quitThreads;
     for ( unsigned i = 0; i < numWorkers; ++i )

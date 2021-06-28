@@ -103,7 +103,7 @@ void DeepPolyAnalysis::freeMemoryIfNeeded()
     }
 }
 
-void DeepPolyAnalysis::run()
+    void DeepPolyAnalysis::run()
 {
     struct timespec deepPolyStart;
     (void) deepPolyStart;
