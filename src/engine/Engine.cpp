@@ -91,7 +91,6 @@ void Engine::optimizeForHeuristicCost()
     {
         terms.append( LPSolver::Term( term.second,
                                            Stringf( "x%u", term.first ) ) );
-        std::cout << term.second << " " << Stringf( "x%u", term.first ).ascii() << std::endl;
     }
     solveLPWithGurobi( terms );
 }

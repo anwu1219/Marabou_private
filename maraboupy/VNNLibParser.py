@@ -66,7 +66,6 @@ def processConstraint(constraint, network, varMap):
     if constraint == None:
         return
     constraint = constraint.strip()
-    print("Processing constraint {}".format(constraint))
     assert(constraint[0] == "(")
     assert(constraint[-1] == ")")
     operator = constraint[1:-1].split("(")[0].split()[0]
@@ -83,7 +82,6 @@ def processConstraint(constraint, network, varMap):
         network.addDisjunctionConstraint(disjuncts)
 
 def getLeqConstraint(constraint, network, varMap):
-    print("LEQ", constraint)
     constraint = constraint.strip()
     operands = constraint.split()
     assert(len(operands) == 2)
@@ -101,9 +99,7 @@ def getLeqConstraint(constraint, network, varMap):
     return eq
 
 def getGeqConstraint(constraint, network, varMap):
-    print("GEQ", constraint)
     constraint = constraint.strip()
-    print("Getting geq constraint {}".format(constraint))
     operands = constraint.split()
     assert(len(operands) == 2)
     eq = Equation(MarabouCore.Equation.GE)
@@ -147,7 +143,6 @@ def getDisjuncts(constraint, network, varMap):
 
 def getConjuncts(conjuncts, network, varMap):
     conjuncts = conjuncts.strip().split(")")
-    print(conjuncts)
     conjunction = []
     for conjunct in conjuncts:
         conjunct = conjunct.strip()
