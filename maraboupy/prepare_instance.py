@@ -50,9 +50,9 @@ def createQuery(args):
     if args.debug:
         inputs = np.random.uniform(0,1, np.array(network.inputVars).shape)
         outputOnnx = network.evaluateWithoutMarabou(inputs)
+        print("output onnx:", outputOnnx)
         outputMarabou = network.evaluateWithMarabou(inputs)
         assert((abs(outputOnnx - outputMarabou) < 0.00001).all())
-        print("output onnx:", outputOnnx)
         print("output marabou:", outputMarabou)
     if propPath != None:
         readVNNLibFile(propPath, network)

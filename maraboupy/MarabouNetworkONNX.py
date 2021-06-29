@@ -502,6 +502,7 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
                     for maxVar in maxVars:
                         e.addAddend(1 / len(maxVars), maxVar)
                     e.addAddend(-1,  outVars[0][k][i][j])
+                    e.setScalar(0.0)
                     self.addEquation(e)
 
 

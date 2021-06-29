@@ -38,6 +38,7 @@ case $benchmark in
         if [[ "$ONNX_FILE" == *"SIGMOID"* ]]; then
             exit 1
         else
+            # remove the div which cannot be handled
             python3 -m onnxsim $onnx "$onnx"-simp
             mv "$onnx"-simp $onnx
             "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
@@ -56,7 +57,13 @@ case $benchmark in
         "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
         ;;
     verivital)
-        "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
+        if [[ "$ONNX_FILE" == *"avgpool"* ]]; then
+            python3 -m onnxsim $onnx "$onnx"-simp
+            mv "$onnx"-simp $onnx
+            "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
+        else
+            "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
+        fi
         ;;
     *)
         exit 1

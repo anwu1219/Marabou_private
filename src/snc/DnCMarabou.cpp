@@ -341,10 +341,6 @@ void DnCMarabou::solveDisjunction()
 
 void DnCMarabou::solveDisjunctionWithMax()
 {
-    struct timespec start = TimeUtils::sampleMicro();
-
-    boost::thread *threads = new boost::thread[1];
-
     std::atomic_bool done (false);
     _engine1.setDone( &done );
 
@@ -353,25 +349,7 @@ void DnCMarabou::solveDisjunctionWithMax()
 
     std::mutex mtx;
 
-    threads[0] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery), &mtx, 48 ) );
-
-    boost::chrono::milliseconds waitTime( 100 );
-    while ( !done.load() )
-        boost::this_thread::sleep_for( waitTime );
-
-    if ( done.load() )
-    {
-        struct timespec end = TimeUtils::sampleMicro();
-
-        unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
-        displayResults( totalElapsed );
-
-        for ( unsigned i = 0; i < 1; ++i )
-        {
-            pthread_kill(threads[i].native_handle(), 9);
-            threads[i].join();
-        }
-    }
+    solveMILP( DnCArgument( &_engine1, &(*newInputQuery), &mtx, 48 ) );
 }
 
 void DnCMarabou::solveNoDisjunction()
