@@ -60,6 +60,13 @@ public:
     {
         return _disjunctionConstraints;
     }
+    bool containsMax()
+    {
+        for ( const auto &constraint : _plConstraints )
+            if ( constraint->getType() == MAX )
+                return true;
+        return false;
+    }
 
     /*
       Methods for handling input and output variables

@@ -942,6 +942,12 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             performMILPSolverBoundedTightening();
         }
 
+        if ( inputQuery.containsMax() )
+        {
+            performSymbolicBoundTightening( _numWorkers );
+        }
+
+
         if ( Options::get()->getBool( Options::DUMP_BOUNDS ) )
             _networkLevelReasoner->dumpBounds();
 

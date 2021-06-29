@@ -393,8 +393,10 @@ bool DnCManager::createEngines( unsigned numberOfEngines, unsigned id )
             engine->setSeed( 1995 );
         else if ( id == 2 || id == 3 )
             engine->setSeed( 1219 );
-        if ( id == 0 || id == 2 )
+        if ( id == 0 )
             engine->setBranchingHeuristic( DivideStrategy::Polarity );
+        else if ( id == 2 )
+            engine->setBranchingHeuristic( DivideStrategy::SOIPolarity );
         else if ( id == 1 || id == 3 )
             engine->setBranchingHeuristic( DivideStrategy::SOI );
         if ( id == 4 )

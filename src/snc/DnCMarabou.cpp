@@ -91,9 +91,6 @@ void DnCMarabou::run()
         exit( 0 );
     }
 
-    /*
-      Step 3: initialize the DNC core
-    */
     if ( _inputQuery.getInputVariables().size() <= 10 )
     {
         std::cout << "Low input dimension detected..." << std::endl;
@@ -146,7 +143,23 @@ void DnCMarabou::run()
         return;
     }
 
-
+    if ( _inputQuery.containsMax() )
+    {
+        std::cout << "Max pooling network" << std::endl;
+        _engine1._numWorkers = 48;
+        _engine1.setVerbosity(0);
+        if ( !_engine1.processInputQuery( _inputQuery, false ) )
+        {
+            std::cout << "Solved by preprocessing" << std::endl;
+            String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );
+            File summaryFile( summaryFilePath );
+            summaryFile.open( File::MODE_WRITE_TRUNCATE );
+            summaryFile.write( "holds\n" );
+            return;
+        }
+        solveDisjunctionWithMax();
+        return;
+    }
 
     // 1. preprocess with 48 threads
     _engine1._numWorkers = 48;
@@ -318,6 +331,41 @@ void DnCMarabou::solveDisjunction()
         displayResults( totalElapsed );
 
         for ( unsigned i = 0; i < 5; ++i )
+        {
+            pthread_kill(threads[i].native_handle(), 9);
+            threads[i].join();
+        }
+    }
+}
+
+void DnCMarabou::solveDisjunctionWithMax()
+{
+    struct timespec start = TimeUtils::sampleMicro();
+
+    boost::thread *threads = new boost::thread[1];
+
+    std::atomic_bool done (false);
+    _engine1.setDone( &done );
+
+    std::unique_ptr<InputQuery> newInputQuery =
+        std::unique_ptr<InputQuery>( new InputQuery( _inputQuery ) );
+
+    std::mutex mtx;
+
+    threads[0] = boost::thread( solveMILP, DnCArgument( &_engine1, &(*newInputQuery), &mtx, 48 ) );
+
+    boost::chrono::milliseconds waitTime( 100 );
+    while ( !done.load() )
+        boost::this_thread::sleep_for( waitTime );
+
+    if ( done.load() )
+    {
+        struct timespec end = TimeUtils::sampleMicro();
+
+        unsigned long long totalElapsed = TimeUtils::timePassed( start, end );
+        displayResults( totalElapsed );
+
+        for ( unsigned i = 0; i < 1; ++i )
         {
             pthread_kill(threads[i].native_handle(), 9);
             threads[i].join();
