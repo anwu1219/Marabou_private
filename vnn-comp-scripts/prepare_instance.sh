@@ -29,14 +29,14 @@ case $benchmark in
         "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
         ;;
     cifar10_resnet)
-        python3 $eran_file  --netname $ONNX_FILE --vnnlib_spec $VNNLIB_FILE --domain refinegpupoly --prepare
+        "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
         ;;
     cifar2020)
-        python3 $eran_file  --netname $ONNX_FILE --vnnlib_spec $VNNLIB_FILE --domain refinegpupoly --prepare
+        exit 1
         ;;
     eran)
         if [[ "$ONNX_FILE" == *"SIGMOID"* ]]; then
-            python3 $eran_file  --netname $ONNX_FILE --vnnlib_spec $VNNLIB_FILE --domain refinepoly --prepare
+            exit 1
         else
             python3 -m onnxsim $onnx "$onnx"-simp
             mv "$onnx"-simp $onnx

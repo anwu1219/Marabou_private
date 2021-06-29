@@ -55,6 +55,7 @@ void PolarityBasedDivider::createSubQueries( unsigned , const
             else
             {
                 auto caseSplits = pLConstraintToSplit->getCaseSplits();
+
                 for ( const auto &caseSplit : caseSplits )
                 {
                     auto newSplit = new PiecewiseLinearCaseSplit();

@@ -119,6 +119,8 @@ void DnCWorker::popOneSubQueryAndSolve()
             _queryDivider->createSubQueries( numNewSubQueries, queryId, depth,
                                              *split, newTimeout, subQueries );
 
+            std::cout << "done" << std::endl;
+
             for ( auto &newSubQuery : subQueries )
             {
                 if ( !_workload->push( std::move( newSubQuery ) ) )
