@@ -1585,9 +1585,9 @@ bool Engine::solveWithMILPEncoding( unsigned timeoutInSeconds )
                     return false;
                 }
             }
+            _exitCode = IEngine::UNSAT;
+            return false;
         }
-        _exitCode = IEngine::UNSAT;
-        return false;
     }
     _exitCode = IEngine::NOT_DONE;
     return false;
