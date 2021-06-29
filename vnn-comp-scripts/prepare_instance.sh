@@ -24,7 +24,11 @@ then
     mkdir $benchmark_dir
 fi
 
+echo $benchmark
 case $benchmark in
+    test)
+        "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
+        ;;
     acasxu)
         "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
         ;;
