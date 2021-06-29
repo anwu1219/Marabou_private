@@ -84,7 +84,7 @@ InputQuery Preprocessor::preprocess( const InputQuery &query, bool attemptVariab
     setMissingBoundsToInfinity();
 
 
-    if ( _preprocessed.getPiecewiseLinearConstraints().size() > 8000 )
+    if ( _preprocessed.getPiecewiseLinearConstraints().size() > 12000 )
         return _preprocessed;
 
     /*
