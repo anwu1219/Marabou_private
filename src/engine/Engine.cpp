@@ -1575,11 +1575,21 @@ bool Engine::solveWithMILPEncoding( unsigned timeoutInSeconds )
                     _exitCode = IEngine::SAT;
                     return true;
                 }
+                else if ( _gurobi->infeasible() )
+                {
+                    continue;
+                }
+                else
+                {
+                    _exitCode = IEngine::NOT_DONE;
+                    return false;
+                }
             }
         }
         _exitCode = IEngine::UNSAT;
         return false;
     }
+    _exitCode = IEngine::NOT_DONE;
     return false;
 }
 
