@@ -17,5 +17,15 @@ export GRB_LICENSE_FILE="$home/gurobi.lic"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 benchmark_dir=$(realpath "$SCRIPT_DIR"/benchmarks/)
-echo "$SCRIPT_DIR/../maraboupy/run_instance.py $onnx $vnnlib $result $benchmark_dir --timeout $timeout"
-"$SCRIPT_DIR"/../maraboupy/run_instance.py $onnx $vnnlib $result $benchmark_dir --timeout $6
+
+case $benchmark in
+    cifar2020)
+        echo "preparing cifar2020..."
+        "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
+        echo "preparing - done"
+        "$SCRIPT_DIR"/../maraboupy/run_instance.py $onnx $vnnlib $result $benchmark_dir --timeout $6
+        ;;
+    *)
+        "$SCRIPT_DIR"/../maraboupy/run_instance.py $onnx $vnnlib $result $benchmark_dir --timeout $6
+        ;;
+esac

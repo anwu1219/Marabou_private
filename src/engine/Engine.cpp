@@ -1179,7 +1179,6 @@ void Engine::performSymbolicBoundTightening( unsigned numWorkers, bool randomLow
         }
     }
 
-    std::cout << numTightenedBounds << "bounds tightened by sbt" << std::endl;
     struct timespec end = TimeUtils::sampleMicro();
     _statistics.incLongAttr( Statistics::TIME_SYMBOLIC_BOUND_TIGHTENING_MICRO, TimeUtils::timePassed( start, end ) );
     _statistics.incLongAttr( Statistics::NUM_SYMBOLIC_BOUND_TIGHTENING, numTightenedBounds );
