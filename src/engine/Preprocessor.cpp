@@ -98,23 +98,21 @@ InputQuery Preprocessor::preprocess( const InputQuery &query, bool attemptVariab
     */
 
     bool continueTightening = true;
-    if ( _preprocessed.getPiecewiseLinearConstraints().size() < 6000 )	
+    while ( continueTightening )
     {
-	while ( continueTightening )
-	{
-	    std::cout << "Preprocessing..." << std::endl;
-	    continueTightening = processEquations();
-	    continueTightening = processConstraints() || continueTightening;
-	    if ( attemptVariableElimination )
-		continueTightening = processIdenticalVariables() || continueTightening;
-	}
-
-	collectFixedValues();
-	separateMergedAndFixed();
-
+	std::cout << "Preprocessing..." << std::endl;
+	continueTightening = processEquations();
+	continueTightening = processConstraints() || continueTightening;
 	if ( attemptVariableElimination )
-	    eliminateVariables();
+	    continueTightening = processIdenticalVariables() || continueTightening;
     }
+
+    collectFixedValues();
+    separateMergedAndFixed();
+
+    if ( attemptVariableElimination )
+	eliminateVariables();
+
     return _preprocessed;
 }
 
