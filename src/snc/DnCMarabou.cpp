@@ -148,7 +148,8 @@ void DnCMarabou::run()
         std::cout << "Max pooling network" << std::endl;
         _engine1._numWorkers = 48;
         _engine1.setVerbosity(0);
-        if ( !_engine1.processInputQuery( _inputQuery, false ) )
+        _engine1._symbolicBoundTighteningType = SymbolicBoundTighteningType::NONE;
+        if ( !_engine1.processInputQuery( _inputQuery ) )
         {
             std::cout << "Solved by preprocessing" << std::endl;
             String summaryFilePath = Options::get()->getString( Options::SUMMARY_FILE );

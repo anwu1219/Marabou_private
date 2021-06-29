@@ -216,6 +216,10 @@ public:
 
     unsigned _constraintViolationThreshold;
 
+    /*
+      Type of symbolic bound tightening
+    */
+    SymbolicBoundTighteningType _symbolicBoundTighteningType;
 private:
     enum BasisRestorationRequired {
         RESTORATION_NOT_NEEDED = 0,
@@ -314,11 +318,6 @@ private:
       Strategy used for internal splitting
     */
     DivideStrategy _splittingStrategy;
-
-    /*
-      Type of symbolic bound tightening
-    */
-    SymbolicBoundTighteningType _symbolicBoundTighteningType;
 
     /*
       Disjunction that is used for splitting but doesn't exist in the beginning

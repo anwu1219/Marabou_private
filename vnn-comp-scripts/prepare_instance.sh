@@ -56,7 +56,7 @@ case $benchmark in
         "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
         ;;
     verivital)
-        exit 1
+        "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
         ;;
     *)
         exit 1
