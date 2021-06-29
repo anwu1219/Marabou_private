@@ -34,3 +34,10 @@ cd build
 cmake ../ -DENABLE_GUROBI=ON
 make -j48
 cd ../
+
+cd Marabou
+mkdir build
+cd build
+cmake ../ -DENABLE_GUROBI=ON
+make -j48
+cd ../../
