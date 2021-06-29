@@ -102,7 +102,7 @@ InputQuery Preprocessor::preprocess( const InputQuery &query, bool attemptVariab
 	continueTightening = processConstraints() || continueTightening;
 	if ( attemptVariableElimination )
 	    continueTightening = processIdenticalVariables() || continueTightening;
-	if ( _preprocessed.countInfiniteBounds() == 0 )
+	if ( _preprocessed.getPiecewiseLinearConstraints().size() > 12000 && _preprocessed.countInfiniteBounds() == 0 )
 	    break;
     }
 
