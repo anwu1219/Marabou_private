@@ -108,7 +108,7 @@ public:
     void obtainCurrentBounds();
     void intervalArithmeticBoundPropagation();
     void symbolicBoundPropagation();
-    void deepPolyPropagation();
+    void deepPolyPropagation( bool randomLowerBound = false );
     void lpRelaxationPropagation();
     void MILPPropagation();
     void iterativePropagation();

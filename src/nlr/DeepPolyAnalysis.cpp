@@ -103,7 +103,7 @@ void DeepPolyAnalysis::freeMemoryIfNeeded()
     }
 }
 
-    void DeepPolyAnalysis::run()
+void DeepPolyAnalysis::run( bool randomLowerBound )
 {
     struct timespec deepPolyStart;
     (void) deepPolyStart;
@@ -125,6 +125,8 @@ void DeepPolyAnalysis::freeMemoryIfNeeded()
         ASSERT( _deepPolyElements.exists( index ) );
         log( Stringf( "Running deeppoly analysis for layer %u...", index ) );
         DeepPolyElement *deepPolyElement = _deepPolyElements[index];
+        if ( layer->getLayerType() == Layer::RELU )
+            ((DeepPolyReLUElement *) deepPolyElement)->setRandomLowerBound( randomLowerBound );
         deepPolyElement->execute( _deepPolyElements );
 
         // Extract updated bounds

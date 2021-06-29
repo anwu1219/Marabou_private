@@ -136,12 +136,12 @@ void NetworkLevelReasoner::symbolicBoundPropagation()
         _layerIndexToLayer[i]->computeSymbolicBounds();
 }
 
-void NetworkLevelReasoner::deepPolyPropagation()
+void NetworkLevelReasoner::deepPolyPropagation( bool randomLowerBound )
 {
     if ( _deepPolyAnalysis == nullptr )
         _deepPolyAnalysis = std::unique_ptr<DeepPolyAnalysis>
             ( new DeepPolyAnalysis( this ) );
-    _deepPolyAnalysis->run();
+    _deepPolyAnalysis->run( randomLowerBound );
 }
 
 void NetworkLevelReasoner::lpRelaxationPropagation()

@@ -31,7 +31,7 @@ public:
     DeepPolyAnalysis( LayerOwner *layerOwner );
     ~DeepPolyAnalysis();
 
-    void run();
+    void run( bool randomLowerBound = false );
 
 private:
     LayerOwner *_layerOwner;

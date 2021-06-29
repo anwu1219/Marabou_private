@@ -39,7 +39,13 @@ public:
       *symbolicLbInTermsOfPredecessor, double *symbolicUbInTermsOfPredecessor,
       unsigned targetLayerSize, DeepPolyElement *predecessor );
 
+    void setRandomLowerBound( bool random )
+    {
+        _randomLowerBound = random;
+    }
+
 private:
+    bool _randomLowerBound = false;
 
     void allocateMemory();
     void freeMemoryIfNeeded();

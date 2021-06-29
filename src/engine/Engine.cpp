@@ -939,14 +939,9 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
         if ( preprocess )
         {
             performSymbolicBoundTightening( _numWorkers );
+            performSymbolicBoundTightening( _numWorkers, true );
             performMILPSolverBoundedTightening();
         }
-
-        if ( inputQuery.containsMax() )
-        {
-            performSymbolicBoundTightening( _numWorkers );
-        }
-
 
         if ( Options::get()->getBool( Options::DUMP_BOUNDS ) )
             _networkLevelReasoner->dumpBounds();
@@ -1139,7 +1134,7 @@ void Engine::tightenBoundsOnConstraintMatrix()
                              TimeUtils::timePassed( start, end ) );
 }
 
-void Engine::performSymbolicBoundTightening( unsigned numWorkers )
+void Engine::performSymbolicBoundTightening( unsigned numWorkers, bool randomLowerBound )
 {
     struct timespec start = TimeUtils::sampleMicro();
 
@@ -1160,7 +1155,7 @@ void Engine::performSymbolicBoundTightening( unsigned numWorkers )
         _networkLevelReasoner->symbolicBoundPropagation();
     else if ( _symbolicBoundTighteningType ==
          SymbolicBoundTighteningType::DEEP_POLY )
-        _networkLevelReasoner->deepPolyPropagation();
+        _networkLevelReasoner->deepPolyPropagation( randomLowerBound );
 
     // Step 3: Extract the bounds
     List<Tightening> tightenings;
@@ -1184,6 +1179,7 @@ void Engine::performSymbolicBoundTightening( unsigned numWorkers )
         }
     }
 
+    std::cout << numTightenedBounds << "bounds tightened by sbt" << std::endl;
     struct timespec end = TimeUtils::sampleMicro();
     _statistics.incLongAttr( Statistics::TIME_SYMBOLIC_BOUND_TIGHTENING_MICRO, TimeUtils::timePassed( start, end ) );
     _statistics.incLongAttr( Statistics::NUM_SYMBOLIC_BOUND_TIGHTENING, numTightenedBounds );
