@@ -39,7 +39,6 @@ DisjunctionConstraint::DisjunctionConstraint( const String &serializedDisjunctio
     {
         PiecewiseLinearCaseSplit split;
         unsigned numBounds = atoi(val->ascii());
-        std::cout << "num bounds" << numBounds << std::endl;
         ++val;
         for ( unsigned bi = 0; bi < numBounds; ++bi )
         {
@@ -52,7 +51,6 @@ DisjunctionConstraint::DisjunctionConstraint( const String &serializedDisjunctio
             split.storeBoundTightening( Tightening(var, bd, type) );
         }
         unsigned numEquations = atoi(val->ascii());
-        std::cout << "num equations" << numEquations << std::endl;
 
         ++val;
         for ( unsigned ei = 0; ei < numEquations; ++ei )
@@ -270,7 +268,6 @@ String DisjunctionConstraint::serializeToString() const
             s += Stringf("%f,", equation._scalar );
         }
     }
-    std::cout << s.ascii() << std::endl;
     return s;
 }
 
