@@ -72,6 +72,8 @@ private:
 
     void solveDisjunction();
 
+    void solveDisjunctionWithMax();
+
     void solveNoDisjunction();
 
     void solveACASLike( InputQuery &inputQuery, DisjunctionConstraint *constraint );

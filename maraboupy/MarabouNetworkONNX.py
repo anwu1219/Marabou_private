@@ -170,7 +170,7 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
         :meta private:
         """
         node = self.getNode(nodeName)
-        
+
         if node.op_type == 'Constant':
             self.constant(node)
         elif node.op_type == 'Identity': 
@@ -185,6 +185,8 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
             self.transpose(node)
         elif node.op_type == "MaxPool":
             self.maxpoolEquations(node, makeEquations)
+        elif node.op_type == "AveragePool":
+            self.averagepoolEquations(node, makeEquations)
         elif node.op_type == "Conv":
             self.convEquations(node, makeEquations)
         elif node.op_type == 'Gemm':
@@ -195,6 +197,8 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
             self.addEquations(node, makeEquations)
         elif node.op_type == 'Sub':
             self.subEquations(node, makeEquations)
+        elif node.op_type == 'Div':
+            self.divEquations(node, makeEquations)
         elif node.op_type == 'Relu': 
             self.reluEquations(node, makeEquations)
         else:
@@ -453,7 +457,54 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
                             if di < inputShape[2] and dj < inputShape[3]:
                                 maxVars.add(inVars[0][k][di][dj])
                     self.addMaxConstraint(maxVars, outVars[0][k][i][j])
-        
+
+    def averagepoolEquations(self, node, makeEquations):
+        """Function to generate maxpooling equations
+
+        Args:
+            node (node): ONNX node representing maxpool operation
+            makeEquations (bool): True if we need to create new variables and maxpool constraints
+
+        :meta private:
+        """
+        nodeName = node.output[0]
+
+        # Extract attributes and define shape
+        inputShape = self.shapeMap[node.input[0]]
+        kernel_shape = [1, 1]
+        strides = [1, 1]
+        for attr in node.attribute:
+            if attr.name == 'kernel_shape':
+                kernel_shape = get_attribute_value(attr)
+            elif attr.name == 'strides':
+                strides = get_attribute_value(attr)
+
+        outputShape = [dim for dim in inputShape]
+        outputShape[2] = int(np.ceil((inputShape[2] - ((kernel_shape[0] - 1) + 1) + 1) / strides[0]))
+        outputShape[3] = int(np.ceil((inputShape[3] - ((kernel_shape[1] - 1) + 1) + 1) / strides[1]))
+        self.shapeMap[nodeName] = outputShape
+
+        if not makeEquations:
+            return
+
+        inVars = self.varMap[node.input[0]]
+        outVars = self.makeNewVariables(nodeName)
+        for i in range(outputShape[2]):
+            for j in range(outputShape[3]):
+                for k in range(outputShape[1]):
+                    maxVars = set()
+                    for di in range(strides[0]*i, strides[0]*i + kernel_shape[0]):
+                        for dj in range(strides[1]*j, strides[1]*j + kernel_shape[1]):
+                            if di < inputShape[2] and dj < inputShape[3]:
+                                maxVars.add(inVars[0][k][di][dj])
+                    coeff = 1 / len(maxVars)
+                    e = MarabouUtils.Equation()
+                    for maxVar in maxVars:
+                        e.addAddend(1 / len(maxVars), maxVar)
+                    e.addAddend(-1,  outVars[0][k][i][j])
+                    self.addEquation(e)
+
+
     def convEquations(self, node, makeEquations):
         """Function to generate equations for a 2D convolution
 
@@ -894,6 +945,81 @@ class MarabouNetworkONNX(MarabouNetwork.MarabouNetwork):
                 e.addAddend(-1, outputVariables[i])
                 e.setScalar(constInput[i])
                 self.addEquation(e)
+
+    def divEquations(self, node, makeEquations):
+        """Function to generate equations corresponding to addition
+
+        Args:
+            node (node): ONNX node representing the Add operation
+            makeEquations (bool): True if we need to create new variables and write Marabou equations
+
+        :meta private:
+        """
+        nodeName = node.output[0]
+
+        # Get the inputs
+        inputName1, inputName2 = node.input
+        shape1 = self.shapeMap[inputName1]
+        shape2 = self.shapeMap[inputName2]
+
+        # Get the broadcasted shape
+        outShape = getBroadcastShape(shape1, shape2)
+        self.shapeMap[nodeName] = outShape
+        if not makeEquations:
+            return
+
+        # Decide which inputs are variables and which are constants
+        firstInputConstant = False; secondInputConstant = False
+        if inputName1 in self.constantMap:
+            firstInputConstant = True
+            input1 = self.constantMap[inputName1]
+        else:
+            input1 = self.varMap[inputName1]
+
+        if inputName2 in self.constantMap:
+            secondInputConstant = True
+            input2 = self.constantMap[inputName2]
+        else:
+            input2 = self.varMap[inputName2]
+
+        # Broadcast inputs to ensure the shapes match
+        input1 = np.broadcast_to(input1, outShape)
+        input2 = np.broadcast_to(input2, outShape)
+
+        # The shape after broadcasting must match
+        assert input1.shape == input2.shape
+
+        # If both inputs to add are constant, then the output is constant too
+        # No new variables are needed, we just need to store the output in constantMap
+        if firstInputConstant and secondInputConstant:
+            self.constantMap[nodeName] = input1 - input2
+            return
+
+        # If both inputs are variables, then we need a new variable to represent
+        # the sum of the two variables
+        elif not firstInputConstant and not secondInputConstant:
+            assert(False)
+            return
+
+        # Otherwise, we are adding constants to variables.
+        # We don't need new equations or new variables if the input variable is the output of a linear equation.
+        # Instead, we can just edit the scalar term of the existing linear equation.
+        # However, if the input variables are not outputs of linear equations (input variables or outputs of
+        # activation functions) then we will need new equations.
+        assert(not firstInputConstant)
+        constInput = input2
+        varInput = input1
+        constInput = constInput.reshape(-1)
+        varInput = varInput.reshape(-1)
+
+        # Adjust equations to incorporate the constant addition
+        outputVariables = self.makeNewVariables(nodeName).reshape(-1)
+        for i in range(len(outputVariables)):
+            e = MarabouUtils.Equation()
+            e.addAddend(1 / constInput[i], varInput[i])
+            e.addAddend(-1, outputVariables[i])
+            e.setScalar(0)
+            self.addEquation(e)
 
     def reluEquations(self, node, makeEquations):
         """Function to generate equations corresponding to pointwise Relu

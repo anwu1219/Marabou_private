@@ -25,6 +25,7 @@ echo "Project dir:" $project_path
 cd $project_path
 
 pip3 install onnx onnxruntime
+pip3 install onnx-simplifier
 
 # install marabou
 rm -rf build

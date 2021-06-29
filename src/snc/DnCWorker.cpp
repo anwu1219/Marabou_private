@@ -119,6 +119,8 @@ void DnCWorker::popOneSubQueryAndSolve()
             _queryDivider->createSubQueries( numNewSubQueries, queryId, depth,
                                              *split, newTimeout, subQueries );
 
+            std::cout << "done" << std::endl;
+
             for ( auto &newSubQuery : subQueries )
             {
                 if ( !_workload->push( std::move( newSubQuery ) ) )
@@ -168,7 +170,7 @@ void DnCWorker::popOneSubQueryAndSolve()
     else
     {
         // If the queue is empty but the pop fails, wait and retry
-        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+        std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
     }
 }
 

@@ -1,9 +1,10 @@
 #! /usr/bin/env bash
 
-onnx=$1
-vnnlib=$2
-result=$3
-timeout=$4
+family=$1
+onnx=$2
+vnnlib=$3
+result=$4
+timeout=$5
 
-./prepare_instance.sh v1 doncare $onnx $vnnlib
+./prepare_instance.sh v1 $family $onnx $vnnlib
 ./run_instance.sh v1 doncare $onnx $vnnlib $result $timeout
