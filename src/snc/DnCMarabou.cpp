@@ -143,9 +143,9 @@ void DnCMarabou::run()
         return;
     }
 
-    if ( _inputQuery.containsMax() )
+    if ( _inputQuery.containsMax() || inputQueryFilePath.contains("avgpool") )
     {
-        std::cout << "Max pooling network" << std::endl;
+        std::cout << "pooling network" << std::endl;
         _engine1._numWorkers = 48;
         _engine1.setVerbosity(0);
         _engine1._symbolicBoundTighteningType = SymbolicBoundTighteningType::NONE;

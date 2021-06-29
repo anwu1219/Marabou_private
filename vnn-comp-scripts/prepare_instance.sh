@@ -35,10 +35,10 @@ case $benchmark in
         exit 1
         ;;
     eran)
-        if [[ "$ONNX_FILE" == *"SIGMOID"* ]]; then
+        if [[ "$onnx" == *"SIGMOID"* ]]; then
             exit 1
         else
-            # remove the div which cannot be handled
+            # remove the div operation which Marabou be handled
             python3 -m onnxsim $onnx "$onnx"-simp
             mv "$onnx"-simp $onnx
             "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
@@ -57,7 +57,8 @@ case $benchmark in
         "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
         ;;
     verivital)
-        if [[ "$ONNX_FILE" == *"avgpool"* ]]; then
+        if [[ "$onnx" == *"avgpool"* ]]; then
+            # remove the pad, which Marabou cannot handle
             python3 -m onnxsim $onnx "$onnx"-simp
             mv "$onnx"-simp $onnx
             "$SCRIPT_DIR"/../maraboupy/prepare_instance.py $onnx $vnnlib $benchmark_dir
