@@ -63,7 +63,7 @@ def arguments():
     parser.add_argument('benchmark_dir', type=str, nargs='?', default=None,
                         help='The directory to store benchmarks')
     parser.add_argument('--debug', action="store_true", default=False)
-    parser.add_argument('--timeout', type=int, default=0, required=True)
+    parser.add_argument('--timeout', type=float, default=0, required=True)
 
     return parser
 
