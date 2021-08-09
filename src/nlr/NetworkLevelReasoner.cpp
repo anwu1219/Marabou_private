@@ -204,6 +204,7 @@ void NetworkLevelReasoner::storeIntoOther( NetworkLevelReasoner &other ) const
 
     // Other has fresh copies of the PLCs, so its topological order
     // shouldn't contain any stale data
+    other._lastReLULayer.clear();
     other._constraintsInTopologicalOrder.clear();
     other._indexToPiecewiseLinearConstraint.clear();
     other._piecewiseLinearConstraintToIndex.clear();

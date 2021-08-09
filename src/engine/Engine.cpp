@@ -107,6 +107,7 @@ bool Engine::performLocalSearch()
     ASSERT( allVarsWithinBounds() );
 
     bool lastCostAccepted = true;
+    unsigned counter = 0;
     while ( !_smtCore.needToSplit() )
     {
         if ( lastCostAccepted )
@@ -125,9 +126,12 @@ bool Engine::performLocalSearch()
         }
 
         PiecewiseLinearConstraint *lastFlippedConstraint = _heuristicCostManager.updateHeuristicCost();
+        std::cout << "Last flipped constraint" << lastFlippedConstraint  << std::endl;
         optimizeForHeuristicCost();
         _heuristicCostManager.updateCostTermsForSatisfiedPLConstraints();
         currentCost = _heuristicCostManager.computeHeuristicCost();
+
+        std::cout << previousCost << " " << currentCost << std::endl;
 
         updateScore( lastFlippedConstraint, previousCost, currentCost );
 
@@ -151,6 +155,9 @@ bool Engine::performLocalSearch()
             }
             else
             {
+                ++counter;
+                if ( counter > 10 )
+                    _smtCore.reportRandomFlip();
                 previousCost = currentCost;
                 lastCostAccepted = true;
                 _statistics.incLongAttr( Statistics::NUM_ACCEPTED_FLIPS, 1 );
@@ -194,7 +201,7 @@ void Engine::concretizeInputAssignment()
 
 void Engine::solveLPWithGurobi( List<LPSolver::Term> &cost )
 {
-  std::cout << "Solving LP..." << std::endl;
+    std::cout << "Solving LP..." << std::endl;
     struct timespec simplexStart = TimeUtils::sampleMicro();
 
     _gurobi->setCost( cost );
@@ -245,6 +252,9 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
     _heuristicCostManager.setGurobi( &(*_gurobi) );
 
     _costTracker.initialize( _plConstraints );
+    std::cout << "Number of constraints: " << _networkLevelReasoner->_lastReLULayer.size() << std::endl;
+    _costTracker._candidatePlConstraints = _networkLevelReasoner->_lastReLULayer;
+    _heuristicCostManager._candidatePlConstraints = _networkLevelReasoner->_lastReLULayer;
 
     mainLoopStatistics();
     if ( _verbosity > 0 )
@@ -808,6 +818,7 @@ void Engine::initializeTableau( const double *constraintMatrix, const List<unsig
 void Engine::initializeNetworkLevelReasoning()
 {
     _networkLevelReasoner = _preprocessedQuery.getNetworkLevelReasoner();
+
     _heuristicCostManager.setNetworkLevelReasoner( _networkLevelReasoner );
 
     if ( _networkLevelReasoner )
@@ -833,6 +844,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             printInputBounds( inputQuery );
 
         _plConstraints = _preprocessedQuery.getPiecewiseLinearConstraints();
+
         _heuristicCostManager.setPLConstraints( _plConstraints );
 
         if ( _constructTableau )
@@ -1282,7 +1294,7 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolarity()
         throw MarabouError( MarabouError::NETWORK_LEVEL_REASONER_NOT_AVAILABLE );
 
     List<PiecewiseLinearConstraint *> &constraints =
-        _networkLevelReasoner->getConstraintsInTopologicalOrder();
+        _networkLevelReasoner->_lastReLULayer;
 
     Map<double, PiecewiseLinearConstraint *> scoreToConstraint;
     for ( auto &plConstraint : constraints )

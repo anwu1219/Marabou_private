@@ -185,6 +185,8 @@ public:
 
     const Map<unsigned, Layer *> &getLayerIndexToLayer() const;
 
+    List<PiecewiseLinearConstraint *> _lastReLULayer;
+
 private:
     Map<unsigned, Layer *> _layerIndexToLayer;
     BoundManager *_boundManager;

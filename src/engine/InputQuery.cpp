@@ -231,6 +231,7 @@ InputQuery &InputQuery::operator=( const InputQuery &other )
         if ( !_networkLevelReasoner )
             _networkLevelReasoner = new NLR::NetworkLevelReasoner;
         other._networkLevelReasoner->storeIntoOther( *_networkLevelReasoner );
+        _networkLevelReasoner->_lastReLULayer.clear();
     }
     else
     {
@@ -284,6 +285,9 @@ InputQuery &InputQuery::operator=( const InputQuery &other )
         {
             auto *newPlc = constraint->duplicateConstraint();
             _plConstraints.append( newPlc );
+            _networkLevelReasoner->addConstraintInTopologicalOrder( newPlc );
+            if ( other._networkLevelReasoner->_lastReLULayer.exists( constraint ) )
+                _networkLevelReasoner->_lastReLULayer.append( newPlc );
             _networkLevelReasoner->addConstraintInTopologicalOrder( newPlc );
             NLR::NeuronIndex index = other._networkLevelReasoner->getNeuronIndexFromPLConstraint( constraint );
             _networkLevelReasoner->setPLConstraintNeuronIndex( newPlc, index );
@@ -803,6 +807,8 @@ bool InputQuery::constructReluLayer( NLR::NetworkLevelReasoner *nlr,
 
     List<NeuronInformation> newNeurons;
 
+    List<PiecewiseLinearConstraint *> lastReLULayer;
+
     // Look for ReLUs where all b variables have already been handled
     const List<PiecewiseLinearConstraint *> &plConstraints =
         getPiecewiseLinearConstraints();
@@ -828,6 +834,7 @@ bool InputQuery::constructReluLayer( NLR::NetworkLevelReasoner *nlr,
         // B has been handled, f hasn't. Add f
         newNeurons.append( NeuronInformation( f, newNeurons.size(), b ) );
         nlr->addConstraintInTopologicalOrder( plc );
+        lastReLULayer.append( plc );
         nlr->setPLConstraintNeuronIndex( plc, NLR::NeuronIndex
                                          ( newLayerIndex, newNeurons.size() - 1 ) );
     }
@@ -838,6 +845,9 @@ bool InputQuery::constructReluLayer( NLR::NetworkLevelReasoner *nlr,
         INPUT_QUERY_LOG( "\tFailed!" );
         return false;
     }
+
+    nlr->_lastReLULayer = lastReLULayer;
+    std::cout << nlr->_lastReLULayer.size()  << std::endl;;
 
     nlr->addLayer( newLayerIndex, NLR::Layer::RELU, newNeurons.size() );
 

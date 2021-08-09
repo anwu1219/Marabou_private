@@ -82,6 +82,9 @@ public:
 
     void dumpHeuristicCost();
 
+    List<PiecewiseLinearConstraint *> _candidatePlConstraints;
+    Vector<PiecewiseLinearConstraint *> _flipCandidates;
+
 private:
 
     IEngine *_engine;
