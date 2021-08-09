@@ -185,6 +185,8 @@ def arguments():
                         help='The offset')
     parser.add_argument('-t', '--target-label', type=int, default=0,
                         help='The target of the adversarial attack')
+    parser.add_argument('--seed', type=int, default=0,
+                        help='The seed')
     parser.add_argument('-i,', '--index', type=int, default=0,
                         help='The index of the point in the test set')
     parser.add_argument('--summary-file', type=str, default="",
