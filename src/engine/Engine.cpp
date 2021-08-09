@@ -87,7 +87,7 @@ void Engine::optimizeForHeuristicCost()
 
 bool Engine::performLocalSearch()
 {
-    ENGINE_LOG( "Performing local search..." );
+    printf( "Performing local search..." );
 
     if ( _constraintViolationThreshold == 0 )
     {
@@ -115,7 +115,7 @@ bool Engine::performLocalSearch()
             if ( allPlConstraintsHold() )
             {
                 ASSERT( FloatUtils::isZero( _heuristicCostManager.computeHeuristicCost() ) );
-                ENGINE_LOG( "Performing local search - done" );
+                printf( "Performing local search - done" );
                 return true;
             }
             else
@@ -158,7 +158,7 @@ bool Engine::performLocalSearch()
             }
         }
     }
-    ENGINE_LOG( "Performing local search - done" );
+    printf( "Performing local search - done" );
     return false;
 }
 
@@ -194,12 +194,15 @@ void Engine::concretizeInputAssignment()
 
 void Engine::solveLPWithGurobi( List<LPSolver::Term> &cost )
 {
+  std::cout << "Solving LP..." << std::endl;
     struct timespec simplexStart = TimeUtils::sampleMicro();
 
     _gurobi->setCost( cost );
     _gurobi->solve();
 
     struct timespec simplexEnd = TimeUtils::sampleMicro();
+    std::cout << "Solving LP - done" << std::endl;
+
     _statistics.incLongAttr( Statistics::TIME_SIMPLEX_STEPS_MICRO,
                              TimeUtils::timePassed( simplexStart, simplexEnd ) );
     _statistics.incLongAttr( Statistics::NUM_SIMPLIEX_CALLS, 1 );
@@ -232,7 +235,7 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
     _gurobi = std::unique_ptr<GurobiWrapper>( new GurobiWrapper() );
     _milpEncoder = std::unique_ptr<MILPEncoder>( new MILPEncoder( _boundManager, true ) );
     _milpEncoder->encodeInputQuery( *_gurobi, _preprocessedQuery );
-    ENGINE_LOG( "Query encoded in Gurobi...\n" );
+    printf( "Query encoded in Gurobi...\n" );
     struct timespec end = TimeUtils::sampleMicro();
     _statistics.incLongAttr( Statistics::TIME_ADDING_CONSTRAINTS_TO_LP_SOLVER_MICRO,
                              TimeUtils::timePassed( start, end ) );
@@ -557,7 +560,7 @@ void Engine::removeRedundantEquations( const double *constraintMatrix )
     analyzer->analyze( constraintMatrix, m, n );
 
     ENGINE_LOG( Stringf( "Number of redundant rows: %u out of %u",
-                         analyzer->getRedundantRows().size(), m ).ascii() );
+		     analyzer->getRedundantRows().size(), m ).ascii() );
 
     // Step 2: remove any equations corresponding to redundant rows
     Set<unsigned> redundantRows = analyzer->getRedundantRows();
