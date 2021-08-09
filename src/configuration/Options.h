@@ -77,6 +77,8 @@ public:
         CONSTRAINT_VIOLATION_THRESHOLD,
 
         MAX_OUTPUT,
+
+	SEED,
     };
 
     enum FloatOptions{

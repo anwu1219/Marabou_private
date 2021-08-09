@@ -48,7 +48,7 @@ Engine::Engine()
     , _gurobi( nullptr )
     , _milpEncoder( nullptr )
     , _solutionFoundAndStoredInOriginalQuery( false )
-    , _seed( 1219 )
+    , _seed( Options::get()->getInt( Options::SEED ) )
     , _heuristicCostManager( this )
     , _costFunctionInitialized( false )
     , _scoreMetric( Options::get()->getString( Options::SCORE_METRIC ) )
@@ -65,6 +65,7 @@ Engine::Engine()
 
     _statistics.stampStartingTime();
 
+    std::cout << "seed" << _seed << std::endl;
     std::srand( _seed );
 }
 
