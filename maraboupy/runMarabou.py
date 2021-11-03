@@ -59,7 +59,7 @@ def main():
                         marabou_arg.append(arg)
                         takeNext = True
         print(marabou_arg)
-        subprocess.run([os.path.join(args.work_dir, "build_production/Marabou")] + ["--input-query={}".format(name)] + marabou_arg )
+        subprocess.run([os.path.join(args.work_dir, "build_production/Marabou-auto")] + ["--input-query={}".format(name)] + marabou_arg )
         os.remove(name)
 
 def createQuery(args):
@@ -118,14 +118,14 @@ def encode_cifar10_linf(network, index, epsilon, target_label):
     lb = np.zeros(3072)
     ub = np.zeros(3072)
     for i in range(1024):
-        lb[i] = (max(0, point[i] - epsilon) - 0.485) / 0.225
-        ub[i] = (min(1, point[i] + epsilon) - 0.485) / 0.225
+        lb[i] = (point[i] - 0.485 ) / 0.225 - epsilon 
+        ub[i] = (point[i] - 0.485) / 0.225 + epsilon
     for i in range(1024):
-        lb[1024 + i] = (max(0, point[1024 + i] - epsilon) - 0.456) / 0.225
-        ub[1024 + i] = (min(1, point[1024 + i] + epsilon) - 0.456) / 0.225
+        lb[1024 + i] = (point[1024 + i] - 0.456) / 0.225 - epsilon
+        ub[1024 + i] = (point[1024 + i] - 0.456) / 0.225 + epsilon
     for i in range(1024):
-        lb[2048 + i] = (max(0, point[2048 + i] - epsilon) - 0.406) / 0.225
-        ub[2048 + i] = (min(1, point[2048 + i] + epsilon) - 0.406) / 0.225
+        lb[2048 + i] = (point[2048 + i] - 0.406) / 0.225 - epsilon
+        ub[2048 + i] = (point[2048 + i] - 0.406) / 0.225 + epsilon
     print("correct label: {}, target label: {}".format(y, target_label))
     for i in range(3072):
         network.setLowerBound(i, lb[i])

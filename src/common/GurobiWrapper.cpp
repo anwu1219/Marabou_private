@@ -82,11 +82,11 @@ void GurobiWrapper::resetModel()
 
     // Thread precision
     _model->getEnv().set( GRB_DoubleParam_OptimalityTol,
-                          GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS );
+                          1e-5 );
     _model->getEnv().set( GRB_DoubleParam_FeasibilityTol,
-                          GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS );
+                          1e-4 );
     _model->getEnv().set( GRB_DoubleParam_IntFeasTol,
-                          GlobalConfiguration::RELU_CONSTRAINT_COMPARISON_TOLERANCE );
+                          1e-4 );
 
     // Timeout
     //setTimeLimit( _timeoutInSeconds );

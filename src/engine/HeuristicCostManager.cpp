@@ -41,7 +41,6 @@ void HeuristicCostManager::reset()
     for ( const auto &plConstraint : _plConstraintsInHeuristicCost )
         plConstraint->resetCostFunctionComponent();
     _plConstraintsInHeuristicCost.clear();
-    _flipCandidates.clear();
     _previousHeuristicCost.clear();
 }
 
@@ -58,7 +57,6 @@ void HeuristicCostManager::initiateCostFunctionForLocalSearch()
     for ( const auto &plConstraint : _plConstraints )
         plConstraint->resetCostFunctionComponent();
     _plConstraintsInHeuristicCost.clear();
-    _flipCandidates.clear();
     _heuristicCost.clear();
     if ( _initializationStrategy == "currentAssignment" )
         initiateCostFunctionForLocalSearchBasedOnCurrentAssignment( _plConstraints );
@@ -271,8 +269,6 @@ void HeuristicCostManager::initiateCostFunctionForLocalSearchBasedOnCurrentAssig
         {
             plConstraint->addCostFunctionComponent( _heuristicCost );
             _plConstraintsInHeuristicCost.append( plConstraint );
-            if ( _candidatePlConstraints.exists( plConstraint ) )
-                 _flipCandidates.append( plConstraint );
         }
     }
 }
@@ -290,8 +286,6 @@ void HeuristicCostManager::initiateCostFunctionForLocalSearchBasedOnInputAssignm
             double value = _networkLevelReasoner->getLayer( index._layer )->getAssignment()[index._neuron];
             plConstraint->addCostFunctionComponentByOutputValue( _heuristicCost, value );
             _plConstraintsInHeuristicCost.append( plConstraint );
-            if ( _candidatePlConstraints.exists( plConstraint ) )
-                 _flipCandidates.append( plConstraint );
         }
     }
 }
@@ -410,8 +404,8 @@ PiecewiseLinearConstraint *HeuristicCostManager::updateHeuristicCostRandomly()
         // If using noise stategy, we just flip a random
         // PLConstraint.
         COST_LOG( "Using noise strategy to pick a PLConstraint and flip its heuristic cost..." );
-        unsigned plConstraintIndex = (unsigned) rand() % _flipCandidates.size();
-        plConstraintToFlip = _flipCandidates[plConstraintIndex];
+        unsigned plConstraintIndex = (unsigned) rand() % _plConstraintsInHeuristicCost.size();
+        plConstraintToFlip = _plConstraintsInHeuristicCost[plConstraintIndex];
 
         Vector<PhaseStatus> phaseStatuses = plConstraintToFlip->getAlternativeHeuristicPhaseStatus();
         unsigned phaseIndex = (unsigned) rand() % phaseStatuses.size();

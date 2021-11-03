@@ -26,7 +26,7 @@ const double GlobalConfiguration::EXPONENTIAL_MOVING_AVERAGE_ALPHA = 0.5;
 // and how to repair a ReLU constraint.
 const bool GlobalConfiguration::USE_POLARITY_BASED_DIRECTION_HEURISTICS = true;
 
-const double GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS = 1e-9;
+const double GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS = 1 * 1e-9;
 const unsigned GlobalConfiguration::DEFAULT_DOUBLE_TO_STRING_PRECISION = 10;
 const unsigned long long GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY = 5;
 const DivideStrategy GlobalConfiguration::SPLITTING_HEURISTICS = DivideStrategy::ReLUViolation;
@@ -38,13 +38,13 @@ const unsigned GlobalConfiguration::ROW_BOUND_TIGHTENER_SATURATION_ITERATIONS = 
 const bool GlobalConfiguration::PREPROCESS_INPUT_QUERY = true;
 const bool GlobalConfiguration::PREPROCESSOR_ELIMINATE_VARIABLES = true;
 const bool GlobalConfiguration::PREPROCESSOR_PL_CONSTRAINTS_ADD_AUX_EQUATIONS = true;
-const double GlobalConfiguration::PREPROCESSOR_ALMOST_FIXED_THRESHOLD = 1e-9;
+const double GlobalConfiguration::PREPROCESSOR_ALMOST_FIXED_THRESHOLD = 1 * 1e-9;
 const bool GlobalConfiguration::PREPROCESSOR_MERGE_CONSECUTIVE_WEIGHTED_SUMS = false;
 
 const bool GlobalConfiguration::WARM_START = false;
 
-const double GlobalConfiguration::RELU_CONSTRAINT_COMPARISON_TOLERANCE = 1e-8;
-const double GlobalConfiguration::ABS_CONSTRAINT_COMPARISON_TOLERANCE = 1e-8;
+const double GlobalConfiguration::RELU_CONSTRAINT_COMPARISON_TOLERANCE = 1e-7;
+const double GlobalConfiguration::ABS_CONSTRAINT_COMPARISON_TOLERANCE = 1e-7;
 
 const bool GlobalConfiguration::ONLY_AUX_INITIAL_BASIS = false;
 

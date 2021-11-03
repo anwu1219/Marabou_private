@@ -126,12 +126,12 @@ bool Engine::performLocalSearch()
         }
 
         PiecewiseLinearConstraint *lastFlippedConstraint = _heuristicCostManager.updateHeuristicCost();
-        std::cout << "Last flipped constraint" << lastFlippedConstraint  << std::endl;
+        //std::cout << "Last flipped constraint" << lastFlippedConstraint  << std::endl;
         optimizeForHeuristicCost();
         _heuristicCostManager.updateCostTermsForSatisfiedPLConstraints();
         currentCost = _heuristicCostManager.computeHeuristicCost();
 
-        std::cout << previousCost << " " << currentCost << std::endl;
+        //std::cout << previousCost << " " << currentCost << std::endl;
 
         updateScore( lastFlippedConstraint, previousCost, currentCost );
 
@@ -156,7 +156,7 @@ bool Engine::performLocalSearch()
             else
             {
                 ++counter;
-                if ( counter > 10 )
+                if ( counter > 3 )
                     _smtCore.reportRandomFlip();
                 previousCost = currentCost;
                 lastCostAccepted = true;
@@ -201,14 +201,14 @@ void Engine::concretizeInputAssignment()
 
 void Engine::solveLPWithGurobi( List<LPSolver::Term> &cost )
 {
-    std::cout << "Solving LP..." << std::endl;
+  //std::cout << "Solving LP..." << std::endl;
     struct timespec simplexStart = TimeUtils::sampleMicro();
 
     _gurobi->setCost( cost );
     _gurobi->solve();
 
     struct timespec simplexEnd = TimeUtils::sampleMicro();
-    std::cout << "Solving LP - done" << std::endl;
+    //std::cout << "Solving LP - done" << std::endl;
 
     _statistics.incLongAttr( Statistics::TIME_SIMPLEX_STEPS_MICRO,
                              TimeUtils::timePassed( simplexStart, simplexEnd ) );
@@ -252,9 +252,9 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
     _heuristicCostManager.setGurobi( &(*_gurobi) );
 
     _costTracker.initialize( _plConstraints );
-    std::cout << "Number of constraints: " << _networkLevelReasoner->_lastReLULayer.size() << std::endl;
-    _costTracker._candidatePlConstraints = _networkLevelReasoner->_lastReLULayer;
-    _heuristicCostManager._candidatePlConstraints = _networkLevelReasoner->_lastReLULayer;
+    // std::cout << "Number of constraints: " << _networkLevelReasoner->_lastReLULayer.size() << std::endl;
+    //_costTracker._candidatePlConstraints = _networkLevelReasoner->_lastReLULayer;
+    //_heuristicCostManager._candidatePlConstraints = _networkLevelReasoner->_lastReLULayer;
 
     mainLoopStatistics();
     if ( _verbosity > 0 )
@@ -315,7 +315,7 @@ bool Engine::solveWithGurobi( unsigned timeoutInSeconds )
             {
                 performBoundTightening();
                 splitJustPerformed = false;
-                informLPSolverOfBounds();
+		_milpEncoder->encodeInputQuery( *_gurobi, _preprocessedQuery );
 
                 DEBUG({ checkBoundConsistency(); });
             }
@@ -1274,7 +1274,7 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnSOI()
 PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolaritySOI()
 {
     ENGINE_LOG( Stringf( "Using SOI-Polarity-based heuristics..." ).ascii() );
-    if ( _smtCore.getStackDepth() < 3 )
+    if ( _smtCore.getStackDepth() < 2 )
     {
       return pickSplitPLConstraintBasedOnPolarity();
     }
@@ -1293,8 +1293,10 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolarity()
     if ( !_networkLevelReasoner )
         throw MarabouError( MarabouError::NETWORK_LEVEL_REASONER_NOT_AVAILABLE );
 
+    //List<PiecewiseLinearConstraint *> &constraints =
+    //  _networkLevelReasoner->_lastReLULayer;
     List<PiecewiseLinearConstraint *> &constraints =
-        _networkLevelReasoner->_lastReLULayer;
+      _networkLevelReasoner->getConstraintsInTopologicalOrder();
 
     Map<double, PiecewiseLinearConstraint *> scoreToConstraint;
     for ( auto &plConstraint : constraints )
@@ -1305,7 +1307,7 @@ PiecewiseLinearConstraint *Engine::pickSplitPLConstraintBasedOnPolarity()
             plConstraint->updateScoreBasedOnPolarity();
             scoreToConstraint[plConstraint->getScore()] = plConstraint;
             if ( scoreToConstraint.size() >=
-                 GlobalConfiguration::POLARITY_CANDIDATES_THRESHOLD )
+                 5 )
                 break;
         }
     }

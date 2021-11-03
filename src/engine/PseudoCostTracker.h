@@ -69,8 +69,7 @@ public:
     PiecewiseLinearConstraint *topUnfixed()
     {
         for ( const auto &entry : _scores )
-            if ( entry._constraint->isActive() && !entry._constraint->phaseFixed()
-                 && _candidatePlConstraints.exists( entry._constraint ) )
+    	    if ( entry._constraint->isActive() && !entry._constraint->phaseFixed() )
             {
                 COST_TRACKER_LOG( Stringf( "Score of top unfixed plConstraint: %.2f",
                                            entry._score ).ascii() );
@@ -79,8 +78,6 @@ public:
         ASSERT( false );
         return NULL;
     }
-
-    List<PiecewiseLinearConstraint *> _candidatePlConstraints;
 
 private:
 
